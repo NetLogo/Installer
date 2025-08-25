@@ -18,6 +18,8 @@ class Button(text: String, function: () => Unit) extends JButton(new AbstractAct
   private var borderColor: Color = Color.WHITE
 
   setBorder(new EmptyBorder(Utils.GapSize / 4, Utils.GapSize, Utils.GapSize / 4, Utils.GapSize))
+  setFocusable(false)
+  setContentAreaFilled(false)
 
   override def paintComponent(g: Graphics): Unit = {
     val g2d = Utils.initGraphics2D(g)
