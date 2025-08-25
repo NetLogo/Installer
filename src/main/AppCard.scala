@@ -19,13 +19,9 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     setVisible(false)
   }
 
-  private val defaultStrut = Box.createVerticalStrut(Utils.GapSize / 2)
-
   private val launchButton = new Button("Launch", () => {})
   private val defaultButton = new Button("Set as Default", () => mainWindow.setDefault(this))
   private val uninstallButton = new Button("Uninstall", () => {})
-
-  defaultStrut.setVisible(false)
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
   setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -37,7 +33,6 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
 
     add(nameLabel)
-    add(defaultStrut)
     add(defaultLabel)
   })
 
@@ -51,7 +46,6 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
 
   def setDefault(default: Boolean): Unit = {
     defaultLabel.setVisible(default)
-    defaultStrut.setVisible(default)
 
     repaint()
   }

@@ -22,18 +22,18 @@ trait ColorTheme {
 
 object LightTheme extends ColorTheme {
   override def windowBackground: Color = Color.WHITE
-  override def windowText: Color = Color.BLACK
-  override def cardBackground: Color = new Color(220, 220, 220)
-  override def cardBackgroundHover: Color = new Color(220, 220, 220)
-  override def cardBackgroundPressed: Color = new Color(200, 200, 200)
-  override def cardBorder: Color = Color.BLACK
-  override def cardBorderHighlight: Color = Color.BLACK
-  override def cardText: Color = Color.BLACK
-  override def buttonBackground: Color = new Color(200, 200, 200)
-  override def buttonBackgroundHover: Color = new Color(175, 175, 175)
-  override def buttonBackgroundPressed: Color = new Color(150, 150, 150)
-  override def buttonBorder = Color.BLACK
-  override def buttonText: Color = Color.BLACK
+  override def windowText: Color = new Color(50, 50, 50)
+  override def cardBackground: Color = new Color(255, 255, 255)
+  override def cardBackgroundHover: Color = new Color(235, 235, 235)
+  override def cardBackgroundPressed: Color = new Color(210, 210, 210)
+  override def cardBorder: Color = new Color(100, 100, 100)
+  override def cardBorderHighlight: Color = new Color(0, 0, 0)
+  override def cardText: Color = new Color(50, 50, 50)
+  override def buttonBackground: Color = new Color(255, 255, 255)
+  override def buttonBackgroundHover: Color = new Color(230, 230, 230)
+  override def buttonBackgroundPressed: Color = new Color(205, 205, 205)
+  override def buttonBorder = new Color(100, 100, 100)
+  override def buttonText: Color = new Color(50, 50, 50)
 }
 
 object DarkTheme extends ColorTheme {
