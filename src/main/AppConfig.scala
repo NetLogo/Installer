@@ -4,4 +4,4 @@ package org.nlogo.installer
 
 import javax.swing.ImageIcon
 
-case class AppConfig(name: String, icon: ImageIcon)
+case class AppConfig(name: String, icon: ImageIcon, exec: String)

@@ -8,9 +8,7 @@ import javax.swing.UIManager
 object Main {
   def main(args: Array[String]): Unit = {
     val font = {
-      val os = System.getProperty("os.name").toLowerCase
-
-      if (os.startsWith("win")) {
+      if (Utils.os != OS.Windows) {
         new Font("Segoe UI", Font.PLAIN, 12)
       } else {
         GraphicsEnvironment.getLocalGraphicsEnvironment.registerFont(

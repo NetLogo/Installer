@@ -6,6 +6,8 @@ import java.awt.{ BasicStroke, Color, Dimension, Graphics }
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
+import scala.sys.process.Process
+
 class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
   private var backgroundColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
@@ -19,7 +21,7 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     setVisible(false)
   }
 
-  private val launchButton = new Button("Launch", () => {})
+  private val launchButton = new Button("Launch", () => launchApp())
   private val defaultButton = new Button("Set as Default", () => mainWindow.setDefault(this))
   private val uninstallButton = new Button("Uninstall", () => {})
 
@@ -48,6 +50,15 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     defaultLabel.setVisible(default)
 
     repaint()
+  }
+
+  private def launchApp(): Unit = {
+    Utils.os match {
+      case OS.Windows =>
+        Process(config.exec).run()
+
+      case _ =>
+    }
   }
 
   override def getMinimumSize: Dimension =

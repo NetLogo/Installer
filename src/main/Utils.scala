@@ -11,6 +11,18 @@ object Utils {
   val CornerDiameter = 8
   val IconSize = 64
 
+  val os: OS = {
+    val name = System.getProperty("os.name").toLowerCase
+
+    if (name.startsWith("win")) {
+      OS.Windows
+    } else if (name.startsWith("mac")) {
+      OS.Mac
+    } else {
+      OS.Linux
+    }
+  }
+
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
 
@@ -18,6 +30,28 @@ object Utils {
 
     g2d
   }
+
+  def numericVersion(name: String): Int = {
+    val versionRegex = """NetLogo (\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?""".r
+
+    try {
+      name match {
+        case versionRegex(major, minor, patch, modifier) =>
+          major.toInt * 1000000 + minor.toInt * 10000 * patch.toInt * 100 + Option(modifier).fold(0)(_.toInt - 100)
+      }
+    } catch {
+      case _: Throwable =>
+        0
+    }
+  }
+}
+
+sealed abstract trait OS
+
+object OS {
+  case object Windows extends OS
+  case object Mac extends OS
+  case object Linux extends OS
 }
 
 trait Transparent extends JComponent {
