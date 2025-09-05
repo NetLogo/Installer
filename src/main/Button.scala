@@ -21,6 +21,8 @@ class Button(text: String, function: () => Unit) extends JButton(new AbstractAct
   setFocusable(false)
   setContentAreaFilled(false)
 
+  initTheme()
+
   override def paintComponent(g: Graphics): Unit = {
     val g2d = Utils.initGraphics2D(g)
 

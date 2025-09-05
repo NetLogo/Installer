@@ -46,6 +46,8 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
   add(Box.createHorizontalStrut(Utils.GapSize))
   add(uninstallButton)
 
+  initTheme()
+
   def setDefault(default: Boolean): Unit = {
     defaultLabel.setVisible(default)
 
@@ -53,12 +55,19 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
   }
 
   private def launchApp(): Unit = {
-    Utils.os match {
+    val success = Utils.os match {
       case OS.Windows =>
-        Process(config.exec).run()
+        Process(Seq(config.exec.getAbsolutePath)).run().exitValue == 0
+
+      case OS.Mac =>
+        Process(Seq("open", config.exec.getAbsolutePath)).run().exitValue == 0
 
       case _ =>
+        true
     }
+
+    if (!success)
+      new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.")
   }
 
   override def getMinimumSize: Dimension =

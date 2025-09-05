@@ -9,6 +9,9 @@ object IconExt {
     case OS.Windows =>
       System.load(new File("lib/iconext.dll").getAbsolutePath)
 
+    case OS.Mac =>
+      System.load(new File("lib/libiconext.dylib").getAbsolutePath)
+
     case _ =>
   }
 

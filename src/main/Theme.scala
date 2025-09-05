@@ -52,6 +52,14 @@ object DarkTheme extends ColorTheme {
   override def buttonText: Color = new Color(220, 220, 220)
 }
 
+object ThemeSync {
+  var currentTheme: ColorTheme = LightTheme
+}
+
 trait ThemeSync {
+  def initTheme(): Unit = {
+    syncTheme(ThemeSync.currentTheme)
+  }
+
   def syncTheme(theme: ColorTheme): Unit
 }

@@ -2,8 +2,6 @@
 
 package org.nlogo.installer
 
-import com.jthemedetecor.OsThemeDetector
-
 import java.awt.{ Dimension, Image }
 import java.awt.image.BufferedImage
 import java.io.File
@@ -13,8 +11,6 @@ import javax.swing.{ Box, BoxLayout, ImageIcon, JFrame, JLabel, JPanel, JScrollP
 import javax.swing.border.EmptyBorder
 
 class MainWindow extends JFrame with ThemeSync {
-  private val themeDetector = OsThemeDetector.getDetector
-
   private val title = new JLabel("<html><b>Installed Versions</b></html>") {
     setFont(getFont.deriveFont(24f))
   }
@@ -65,14 +61,12 @@ class MainWindow extends JFrame with ThemeSync {
 
     setLocation(screenSize.width / 2 - getWidth / 2, screenSize.height / 2 - getHeight / 2)
 
-    syncTheme(if (themeDetector.isDark) DarkTheme else LightTheme)
-
-    themeDetector.registerListener(dark => syncTheme(if (dark) DarkTheme else LightTheme))
-
     findInstalled()
 
     if (cards.nonEmpty)
       cards(0).setDefault(true)
+
+    initTheme()
   }
 
   private def resizeImage(image: Image): ImageIcon = {
@@ -97,16 +91,28 @@ class MainWindow extends JFrame with ThemeSync {
   // requires native code since Java doesn't provide tools to load image data from platform-specific
   // icon types. that code can be found in the `iconext` directory. (Isaac B 8/25/25)
   private def findInstalled(): Unit = {
-    val paths: Seq[(String, String)] = Utils.os match {
+    val paths: Seq[PathInfo] = Utils.os match {
       case OS.Windows =>
         File.listRoots.flatMap { file =>
           Option(file.toPath.resolve("Program Files").toFile.listFiles).getOrElse(Array[File]()) ++
             Option(file.toPath.resolve("Program Files (x86)").toFile.listFiles).getOrElse(Array[File]())
         }.collect {
           case file if file.getName.contains("NetLogo") =>
-            listFilesRecursive(file).find(f => """NetLogo( [0-9\.]+)?.exe""".r.matches(f.getName)).map { exe =>
-              (file.getName, exe.toString)
-            }
+            listFilesRecursive(file).find(f => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe""".r.matches(f.getName))
+              .map(exe => PathInfo(file.getName, exe, exe))
+        }.flatten.toSeq
+
+      case OS.Mac =>
+        File.listRoots.flatMap { file =>
+          Option(file.toPath.resolve("Applications").toFile.listFiles).getOrElse(Array[File]())
+        }.collect {
+          case file if file.getName.contains("NetLogo") =>
+            listFilesRecursive(file).find(f => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$""".r.matches(f.getName))
+              .flatMap { app =>
+                app.toPath.resolve("Contents/Resources").toFile.listFiles.find { icon =>
+                  """^NetLogo.*\.icns$""".r.matches(icon.getName)
+                }.map(icon => PathInfo(file.getName, icon, app))
+              }
         }.flatten.toSeq
 
       case _ =>
@@ -114,8 +120,8 @@ class MainWindow extends JFrame with ThemeSync {
     }
 
     val configs: Seq[AppConfig] = paths.map {
-      case (name, exec) =>
-        val image = IconExt.extractIcon(exec) match {
+      case PathInfo(name, icon, exec) =>
+        val image = IconExt.extractIcon(icon.getAbsolutePath) match {
           case ExtResult(pixels, width, height) if pixels.nonEmpty =>
             val buffer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
 
@@ -137,8 +143,6 @@ class MainWindow extends JFrame with ThemeSync {
     cards.foreach { card =>
       cardPanel.add(Box.createVerticalStrut(Utils.GapSize))
       cardPanel.add(card)
-
-      card.syncTheme(if (themeDetector.isDark) DarkTheme else LightTheme)
     }
   }
 
@@ -155,4 +159,6 @@ class MainWindow extends JFrame with ThemeSync {
 
     addCard.syncTheme(theme)
   }
+
+  private case class PathInfo(name: String, icon: File, exec: File)
 }
