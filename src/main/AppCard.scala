@@ -7,6 +7,7 @@ import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
 import scala.sys.process.Process
+import scala.util.Try
 
 class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
   private var backgroundColor: Color = Color.WHITE
@@ -55,16 +56,20 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
   }
 
   private def launchApp(): Unit = {
-    val success = Utils.os match {
+    val success = Try(Utils.os match {
       case OS.Windows =>
-        Process(Seq(config.exec.getAbsolutePath)).run().exitValue == 0
+        // no matter how you try to launch the exe on Windows, it blocks until the application is closed,
+        // so we just have to start it in the background and hope it works. (Isaac B 9/5/25)
+        Process(Seq(config.exec.getAbsolutePath)).run()
+
+        true
 
       case OS.Mac =>
-        Process(Seq("open", config.exec.getAbsolutePath)).run().exitValue == 0
+        Process(Seq("open", config.exec.getAbsolutePath)).! == 0
 
       case _ =>
         true
-    }
+    }).getOrElse(false)
 
     if (!success)
       new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.")

@@ -33,11 +33,15 @@ object Utils {
 
   def numericVersion(name: String): Int = {
     val versionRegex = """(?i)^NetLogo (\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+    val oldVersionRegex = """(?i)^NetLogo (\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
 
     try {
       name match {
         case versionRegex(major, minor, patch, modifier) =>
           major.toInt * 1000000 + minor.toInt * 10000 + patch.toInt * 100 + Option(modifier).fold(0)(_.toInt - 100)
+
+        case oldVersionRegex(major, minor, modifier) =>
+          major.toInt * 1000000 + minor.toInt * 10000 + Option(modifier).fold(0)(_.toInt - 100)
       }
     } catch {
       case _: Throwable =>
