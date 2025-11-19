@@ -2,21 +2,29 @@
 
 package org.nlogo.installer
 
-import java.awt.{ BorderLayout, Frame }
+import java.awt.{ BorderLayout, Dimension, Frame }
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-class OptionPane(parent: Frame, title: String, message: String) extends JDialog(parent, title, true) with ThemeSync {
+class OptionPane(parent: Frame, title: String, message: String, options: Seq[String])
+  extends JDialog(parent, title, true) with ThemeSync {
+
+  private var selectedIndex = -1
+
   private val label = new JLabel(message)
 
-  private val button = new Button("OK", () => {
-    setVisible(false)
-  }) {
-    override def getMaximumSize: java.awt.Dimension =
-      getMinimumSize
+  private val buttons = options.zipWithIndex.map { (option, index) =>
+    new Button(option, () => {
+      selectedIndex = index
 
-    override def getPreferredSize: java.awt.Dimension =
-      getMinimumSize
+      setVisible(false)
+    }) {
+      override def getMaximumSize: Dimension =
+        getMinimumSize
+
+      override def getPreferredSize: Dimension =
+        getMinimumSize
+    }
   }
 
   add(new JPanel(new BorderLayout(Utils.GapSize, Utils.GapSize)) with Transparent {
@@ -27,7 +35,13 @@ class OptionPane(parent: Frame, title: String, message: String) extends JDialog(
       setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
 
       add(Box.createHorizontalGlue)
-      add(button)
+      add(buttons.head)
+
+      buttons.drop(1).foreach { button =>
+        add(Box.createHorizontalStrut(Utils.GapSize))
+        add(button)
+      }
+
       add(Box.createHorizontalGlue)
     }, BorderLayout.SOUTH)
   })
@@ -41,11 +55,14 @@ class OptionPane(parent: Frame, title: String, message: String) extends JDialog(
   setAlwaysOnTop(true)
   setVisible(true)
 
+  def getSelectedIndex: Int =
+    selectedIndex
+
   override def syncTheme(theme: ColorTheme): Unit = {
     getContentPane.setBackground(theme.windowBackground)
 
     label.setForeground(theme.windowText)
 
-    button.syncTheme(theme)
+    buttons.foreach(_.syncTheme(theme))
   }
 }

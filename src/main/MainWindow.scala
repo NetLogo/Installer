@@ -63,8 +63,7 @@ class MainWindow extends JFrame with ThemeSync {
 
     findInstalled()
 
-    if (cards.nonEmpty)
-      cards(0).setDefault(true)
+    cards.headOption.foreach(_.setDefault(true))
 
     initTheme()
   }
@@ -86,6 +85,27 @@ class MainWindow extends JFrame with ThemeSync {
     cards.foreach(card => card.setDefault(card == default))
   }
 
+  def removeCard(card: AppCard): Unit = {
+    cards = cards.filter(_ != card)
+
+    if (card.isDefault)
+      cards.headOption.foreach(_.setDefault(true))
+
+    refreshCardPanel()
+  }
+
+  private def refreshCardPanel(): Unit = {
+    cardPanel.removeAll()
+
+    cards.foreach { card =>
+      cardPanel.add(Box.createVerticalStrut(Utils.GapSize))
+      cardPanel.add(card)
+    }
+
+    revalidate()
+    repaint()
+  }
+
   // this method looks in the standard platform-specific locations to find NetLogo installations. it
   // extracts both the version number and the app icon from each executable, which unfortunately
   // requires native code since Java doesn't provide tools to load image data from platform-specific
@@ -99,7 +119,7 @@ class MainWindow extends JFrame with ThemeSync {
         }.collect {
           case file if file.getName.contains("NetLogo") =>
             listFilesRecursive(file).find(f => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe""".r.matches(f.getName))
-              .map(exe => PathInfo(file.getName, exe, exe))
+              .map(exe => PathInfo(file.getName, exe, file, exe))
         }.flatten.toSeq
 
       case OS.Mac =>
@@ -111,7 +131,7 @@ class MainWindow extends JFrame with ThemeSync {
               .flatMap { app =>
                 app.toPath.resolve("Contents/Resources").toFile.listFiles.find { icon =>
                   """^NetLogo.*\.icns$""".r.matches(icon.getName)
-                }.map(icon => PathInfo(file.getName, icon, app))
+                }.map(icon => PathInfo(file.getName, icon, app.getParentFile, app))
               }
         }.flatten.toSeq
 
@@ -120,7 +140,7 @@ class MainWindow extends JFrame with ThemeSync {
     }
 
     val configs: Seq[AppConfig] = paths.map {
-      case PathInfo(name, icon, exec) =>
+      case PathInfo(name, icon, root, exec) =>
         val image = IconExt.extractIcon(icon.getAbsolutePath) match {
           case ExtResult(pixels, width, height) if pixels.nonEmpty =>
             val buffer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
@@ -133,17 +153,12 @@ class MainWindow extends JFrame with ThemeSync {
             ImageIO.read(new File("NetLogo.png"))
         }
 
-        AppConfig(name, resizeImage(image), exec)
+        AppConfig(name, resizeImage(image), root, exec)
     }
 
     cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.name)).map(AppCard(_, this))
 
-    cardPanel.removeAll()
-
-    cards.foreach { card =>
-      cardPanel.add(Box.createVerticalStrut(Utils.GapSize))
-      cardPanel.add(card)
-    }
+    refreshCardPanel()
   }
 
   private def listFilesRecursive(file: File): Array[File] =
@@ -160,5 +175,5 @@ class MainWindow extends JFrame with ThemeSync {
     addCard.syncTheme(theme)
   }
 
-  private case class PathInfo(name: String, icon: File, exec: File)
+  private case class PathInfo(name: String, icon: File, root: File, exec: File)
 }

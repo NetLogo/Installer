@@ -3,6 +3,7 @@
 package org.nlogo.installer
 
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
+import java.io.File
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
@@ -24,7 +25,7 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
 
   private val launchButton = new Button("Launch", () => launchApp())
   private val defaultButton = new Button("Set as Default", () => mainWindow.setDefault(this))
-  private val uninstallButton = new Button("Uninstall", () => {})
+  private val uninstallButton = new Button("Uninstall", () => uninstall())
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
   setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -55,6 +56,9 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     repaint()
   }
 
+  def isDefault: Boolean =
+    defaultLabel.isVisible
+
   private def launchApp(): Unit = {
     val success = Try(Utils.os match {
       case OS.Windows =>
@@ -72,7 +76,34 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     }).getOrElse(false)
 
     if (!success)
-      new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.")
+      new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.", Seq("OK"))
+  }
+
+  private def uninstall(): Unit = {
+    if (new OptionPane(mainWindow, "Uninstall", s"Are you sure you want to uninstall ${config.name}?",
+                       Seq("Uninstall", "Cancel")).getSelectedIndex == 0) {
+      val success = {
+        try {
+          deleteRecursive(config.root)
+        } catch {
+          case _: SecurityException => false
+        }
+      }
+
+      if (success) {
+        mainWindow.removeCard(this)
+      } else {
+        new OptionPane(mainWindow, "Error", s"Unable to delete ${config.name}.", Seq("OK"))
+      }
+    }
+  }
+
+  private def deleteRecursive(file: File): Boolean = {
+    if (file.isDirectory) {
+      file.listFiles.forall(deleteRecursive) && file.delete()
+    } else {
+      file.delete()
+    }
   }
 
   override def getMinimumSize: Dimension =
