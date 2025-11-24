@@ -2,8 +2,9 @@
 
 package org.nlogo.installer
 
-import java.awt.{ Color, Cursor, Graphics, Graphics2D, RenderingHints }
+import java.awt.{ Color, Cursor, Graphics, Graphics2D, RenderingHints, Window }
 import java.awt.event.{ MouseAdapter, MouseEvent }
+import java.io.File
 import javax.swing.JComponent
 
 object Utils {
@@ -23,6 +24,8 @@ object Utils {
     }
   }
 
+  val arch: String = System.getProperty("os.arch")
+
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
 
@@ -32,8 +35,8 @@ object Utils {
   }
 
   def numericVersion(name: String): Int = {
-    val versionRegex = """(?i)^NetLogo (\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
-    val oldVersionRegex = """(?i)^NetLogo (\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+    val versionRegex = """(?i)^(\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+    val oldVersionRegex = """(?i)^(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
 
     try {
       name match {
@@ -48,14 +51,22 @@ object Utils {
         0
     }
   }
+
+  def center(window: Window, parent: Window): Unit = {
+    window.setLocation(parent.getX + parent.getWidth / 2 - window.getWidth / 2,
+                       parent.getY + parent.getHeight / 2 - window.getHeight / 2)
+  }
+
+  def listFilesRecursive(file: File): Array[File] =
+    Option(file.listFiles).getOrElse(Array[File]()).flatMap(file => file +: listFilesRecursive(file))
 }
 
-sealed abstract trait OS
+sealed abstract trait OS(val name: String)
 
 object OS {
-  case object Windows extends OS
-  case object Mac extends OS
-  case object Linux extends OS
+  case object Windows extends OS("windows")
+  case object Mac extends OS("mac")
+  case object Linux extends OS("linux")
 }
 
 trait Transparent extends JComponent {

@@ -5,10 +5,15 @@ package org.nlogo.installer
 import java.awt.{ Dimension, Image }
 import java.awt.image.BufferedImage
 import java.io.File
+import java.nio.file.Files
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFrame, JLabel, JPanel, JScrollPane, ScrollPaneConstants,
                      WindowConstants }
 import javax.swing.border.EmptyBorder
+
+import scala.util.Success
+
+import ujson.Obj
 
 class MainWindow extends JFrame with ThemeSync {
   private val title = new JLabel("<html><b>Installed Versions</b></html>") {
@@ -55,7 +60,7 @@ class MainWindow extends JFrame with ThemeSync {
     add(scrollPane)
 
     setMinimumSize(scrollPane.getMinimumSize)
-    setSize(600, Utils.IconSize * 4 + Utils.GapSize * 13)
+    setSize(700, Utils.IconSize * 4 + Utils.GapSize * 13)
 
     val screenSize = getToolkit.getScreenSize
 
@@ -63,22 +68,20 @@ class MainWindow extends JFrame with ThemeSync {
 
     findInstalled()
 
+    val checksums = getRootChecksums()
+
+    cards.foreach { card =>
+      checksums.get(card.config.version).foreach { expected =>
+        val checksumPath = card.config.root.toPath.resolve(".checksum")
+
+        if (Files.exists(checksumPath))
+          card.setUpdatable(expected != Files.readString(checksumPath).trim)
+      }
+    }
+
     cards.headOption.foreach(_.setDefault(true))
 
     initTheme()
-  }
-
-  private def resizeImage(image: Image): ImageIcon = {
-    val size = Utils.IconSize
-
-    // getScaledInstance runs asynchronously, but wrapping it with ImageIcon ensures that the scaling
-    // operation fully completes before creating the BufferedImage (Isaac B 8/24/25)
-    val scaledImage = new ImageIcon(image.getScaledInstance(size, size, Image.SCALE_SMOOTH)).getImage
-    val bufferedImage = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
-
-    bufferedImage.createGraphics.drawImage(scaledImage, 0, 0, size, size, null)
-
-    new ImageIcon(bufferedImage)
   }
 
   def setDefault(default: AppCard): Unit = {
@@ -106,6 +109,19 @@ class MainWindow extends JFrame with ThemeSync {
     repaint()
   }
 
+  private def resizeImage(image: Image): ImageIcon = {
+    val size = Utils.IconSize
+
+    // getScaledInstance runs asynchronously, but wrapping it with ImageIcon ensures that the scaling
+    // operation fully completes before creating the BufferedImage (Isaac B 8/24/25)
+    val scaledImage = new ImageIcon(image.getScaledInstance(size, size, Image.SCALE_SMOOTH)).getImage
+    val bufferedImage = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+
+    bufferedImage.createGraphics.drawImage(scaledImage, 0, 0, size, size, null)
+
+    new ImageIcon(bufferedImage)
+  }
+
   // this method looks in the standard platform-specific locations to find NetLogo installations. it
   // extracts both the version number and the app icon from each executable, which unfortunately
   // requires native code since Java doesn't provide tools to load image data from platform-specific
@@ -118,8 +134,9 @@ class MainWindow extends JFrame with ThemeSync {
             Option(file.toPath.resolve("Program Files (x86)").toFile.listFiles).getOrElse(Array[File]())
         }.collect {
           case file if file.getName.contains("NetLogo") =>
-            listFilesRecursive(file).find(f => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe""".r.matches(f.getName))
-              .map(exe => PathInfo(file.getName, exe, file, exe))
+            Utils.listFilesRecursive(file).find { f =>
+              """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe""".r.matches(f.getName)
+            }.map(exe => PathInfo(file.getName, exe, file, exe))
         }.flatten.toSeq
 
       case OS.Mac =>
@@ -127,12 +144,13 @@ class MainWindow extends JFrame with ThemeSync {
           Option(file.toPath.resolve("Applications").toFile.listFiles).getOrElse(Array[File]())
         }.collect {
           case file if file.getName.contains("NetLogo") =>
-            listFilesRecursive(file).find(f => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$""".r.matches(f.getName))
-              .flatMap { app =>
-                app.toPath.resolve("Contents/Resources").toFile.listFiles.find { icon =>
-                  """^NetLogo.*\.icns$""".r.matches(icon.getName)
-                }.map(icon => PathInfo(file.getName, icon, app.getParentFile, app))
-              }
+            Utils.listFilesRecursive(file).find { f =>
+              """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$""".r.matches(f.getName)
+            }.flatMap { app =>
+              app.toPath.resolve("Contents/Resources").toFile.listFiles.find { icon =>
+                """^NetLogo.*\.icns$""".r.matches(icon.getName)
+              }.map(icon => PathInfo(file.getName, icon, app.getParentFile, app))
+            }
         }.flatten.toSeq
 
       case _ =>
@@ -153,16 +171,28 @@ class MainWindow extends JFrame with ThemeSync {
             ImageIO.read(new File("NetLogo.png"))
         }
 
-        AppConfig(name, resizeImage(image), root, exec)
+        AppConfig(name, name.stripPrefix("NetLogo "), resizeImage(image), root, exec)
     }
 
-    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.name)).map(AppCard(_, this))
+    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map(AppCard(_, this))
 
     refreshCardPanel()
   }
 
-  private def listFilesRecursive(file: File): Array[File] =
-    Option(file.listFiles).getOrElse(Array[File]()).flatMap(file => file +: listFilesRecursive(file))
+  private def getRootChecksums(): Map[String, String] = {
+    Request.json("get_root_checksums", Obj(
+      "os" -> Utils.os.name,
+      "arch" -> Utils.arch
+    )) match {
+      case Success(json) =>
+        json.obj.map((key, value) => (key -> value.str)).toMap
+
+      case _ =>
+        new OptionPane(this, "Error", "Error retrieving release information from server.", Seq("OK"))
+
+        Map()
+    }
+  }
 
   override def syncTheme(theme: ColorTheme): Unit = {
     scrollPane.setBackground(theme.windowBackground)

@@ -18,6 +18,8 @@ trait ColorTheme {
   def buttonBackgroundPressed: Color
   def buttonBorder: Color
   def buttonText: Color
+  def progressBackground: Color
+  def progressForeground: Color
 }
 
 object LightTheme extends ColorTheme {
@@ -32,8 +34,10 @@ object LightTheme extends ColorTheme {
   override def buttonBackground: Color = new Color(255, 255, 255)
   override def buttonBackgroundHover: Color = new Color(230, 230, 230)
   override def buttonBackgroundPressed: Color = new Color(205, 205, 205)
-  override def buttonBorder = new Color(100, 100, 100)
+  override def buttonBorder: Color = new Color(100, 100, 100)
   override def buttonText: Color = new Color(50, 50, 50)
+  override def progressBackground: Color = new Color(230, 230, 230)
+  override def progressForeground: Color = new Color(0, 200, 0)
 }
 
 object DarkTheme extends ColorTheme {
@@ -50,6 +54,8 @@ object DarkTheme extends ColorTheme {
   override def buttonBackgroundPressed: Color = new Color(50, 50, 50)
   override def buttonBorder: Color = new Color(150, 150, 150)
   override def buttonText: Color = new Color(220, 220, 220)
+  override def progressBackground: Color = new Color(100, 100, 100)
+  override def progressForeground: Color = new Color(100, 200, 100)
 }
 
 object ThemeSync {

@@ -2,15 +2,22 @@
 
 package org.nlogo.installer
 
+import com.dynatrace.hash4j.hashing.Hashing
+
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
 import java.io.File
+import java.nio.file.{ Files, Paths }
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-import scala.sys.process.Process
-import scala.util.Try
+import org.apache.commons.compress.archivers.zip.ZipFile
 
-class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
+import scala.sys.process.Process
+import scala.util.{ Success, Try }
+
+import ujson.Obj
+
+class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
   private var backgroundColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
   private var borderHighlightColor: Color = Color.WHITE
@@ -24,8 +31,23 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
   }
 
   private val launchButton = new Button("Launch", () => launchApp())
+  private val updateButton = new Button("Update", () => update())
   private val defaultButton = new Button("Set as Default", () => mainWindow.setDefault(this))
   private val uninstallButton = new Button("Uninstall", () => uninstall())
+
+  private val updatePanel = new JPanel with Transparent {
+    setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
+    setVisible(false)
+
+    add(Box.createHorizontalStrut(Utils.GapSize))
+    add(updateButton)
+
+    override def getMaximumSize: Dimension =
+      this.getMinimumSize
+
+    override def getPreferredSize: Dimension =
+      this.getMinimumSize
+  }
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
   setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -43,6 +65,7 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
   add(Box.createHorizontalStrut(Utils.GapSize))
   add(Box.createHorizontalGlue)
   add(launchButton)
+  add(updatePanel)
   add(Box.createHorizontalStrut(Utils.GapSize))
   add(defaultButton)
   add(Box.createHorizontalStrut(Utils.GapSize))
@@ -58,6 +81,10 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
 
   def isDefault: Boolean =
     defaultLabel.isVisible
+
+  def setUpdatable(updatable: Boolean): Unit = {
+    updatePanel.setVisible(updatable)
+  }
 
   private def launchApp(): Unit = {
     val success = Try(Utils.os match {
@@ -77,6 +104,85 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
 
     if (!success)
       new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.", Seq("OK"))
+  }
+
+  private def update(): Unit = {
+    val files = Utils.listFilesRecursive(config.root).filterNot(_.isDirectory)
+
+    val total = files.foldLeft(0L)(_ + _.length)
+    var processed = 0
+
+    var checksums = Map[String, String]()
+
+    new Thread {
+      override def run(): Unit = {
+        files.foreach { file =>
+          val path = file.toPath
+          val relativePath = config.root.toPath.relativize(path).toString.replace("\\", "/")
+
+          val bytes = Files.readAllBytes(path)
+
+          checksums = checksums + (relativePath -> Hashing.xxh3_64.hashBytesToLong(bytes).toString)
+
+          processed += bytes.size
+        }
+      }
+    }.start()
+
+    if (!new ProgressDialog(mainWindow, "Update", "Preparing for update...",
+                            () => processed.toDouble / total, false).isCompleted)
+      return
+
+    var progress = 0.0
+
+    new Thread {
+      override def run(): Unit = {
+        Request.file("get_updated_files", Obj(
+          "os" -> Utils.os.name,
+          "arch" -> Utils.arch,
+          "version" -> config.version,
+          "checksums" -> checksums
+        )) match {
+          case Success(file) =>
+            val builder = new ZipFile.Builder
+
+            builder.setFile(file)
+
+            val input = builder.get
+
+            val enumeration = input.getEntries
+
+            while (enumeration.hasMoreElements) {
+              val entry = enumeration.nextElement
+
+              if (!entry.isDirectory) {
+                val relativePath = Paths.get(entry.getName)
+                val localPath = config.root.toPath.resolve(relativePath)
+
+                localPath.toFile.getParentFile.mkdirs()
+
+                val stream = input.getInputStream(entry)
+
+                Files.write(localPath, stream.readAllBytes())
+
+                stream.close()
+              }
+            }
+
+            input.close()
+
+            file.delete()
+
+            progress = 1.0
+
+          case _ =>
+            new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Seq("OK"))
+        }
+      }
+    }.start()
+
+    if (new ProgressDialog(mainWindow, "Update", "Downloading updated files...", () => progress, true).isCompleted)
+      setUpdatable(false)
   }
 
   private def uninstall(): Unit = {
@@ -142,6 +248,7 @@ class AppCard(config: AppConfig, mainWindow: MainWindow) extends JPanel with Tra
     defaultLabel.setForeground(theme.cardText)
 
     launchButton.syncTheme(theme)
+    updateButton.syncTheme(theme)
     defaultButton.syncTheme(theme)
     uninstallButton.syncTheme(theme)
   }

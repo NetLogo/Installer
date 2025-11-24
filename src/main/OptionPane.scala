@@ -49,7 +49,7 @@ class OptionPane(parent: Frame, title: String, message: String, options: Seq[Str
   initTheme()
   pack()
 
-  setLocation(parent.getX + parent.getWidth / 2 - getWidth / 2, parent.getY + parent.getHeight / 2 - getHeight / 2)
+  Utils.center(this, parent)
 
   setResizable(false)
   setAlwaysOnTop(true)

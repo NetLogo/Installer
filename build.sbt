@@ -17,5 +17,13 @@ lazy val root = project.in(file(".")).settings(
   javaOptions += "-Dapple.awt.application.appearance=system",
 
   resolvers += "jitpack" at "https://jitpack.io",
-  libraryDependencies += "com.github.Dansoftowner" % "jSystemThemeDetector" % "3.9.1"
+
+  libraryDependencies ++= Seq(
+    "com.github.Dansoftowner" % "jSystemThemeDetector" % "3.9.1",
+    "org.slf4j" % "slf4j-nop" % "2.0.13",
+    "com.softwaremill.sttp.client4" %% "core" % "4.0.9",
+    "com.softwaremill.sttp.client4" %% "upickle" % "4.0.9",
+    "org.apache.commons" % "commons-compress" % "1.28.0",
+    "com.dynatrace.hash4j" % "hash4j" % "0.28.0"
+  )
 )
