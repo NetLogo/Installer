@@ -6,13 +6,15 @@ import java.awt.{ BasicStroke, Color, Dimension, Graphics }
 import java.awt.event.{ MouseAdapter, MouseEvent }
 import javax.swing.JPanel
 
-class AddCard extends JPanel with Transparent with ThemeSync with MouseActions {
+class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync with MouseActions {
   private var backgroundHoverColor: Color = Color.WHITE
   private var backgroundPressedColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
 
   addMouseListener(new MouseAdapter {
-    override def mouseClicked(e: MouseEvent): Unit = {}
+    override def mouseClicked(e: MouseEvent): Unit = {
+      mainWindow.addInstallation()
+    }
   })
 
   override def paintComponent(g: Graphics): Unit = {

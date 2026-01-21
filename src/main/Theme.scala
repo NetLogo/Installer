@@ -20,6 +20,9 @@ trait ColorTheme {
   def buttonText: Color
   def progressBackground: Color
   def progressForeground: Color
+  def menuBackground: Color
+  def menuBackgroundHover: Color
+  def menuText: Color
 }
 
 object LightTheme extends ColorTheme {
@@ -38,6 +41,9 @@ object LightTheme extends ColorTheme {
   override def buttonText: Color = new Color(50, 50, 50)
   override def progressBackground: Color = new Color(230, 230, 230)
   override def progressForeground: Color = new Color(0, 200, 0)
+  override def menuBackground: Color = new Color(255, 255, 255)
+  override def menuBackgroundHover: Color = new Color(230, 230, 230)
+  override def menuText: Color = new Color(50, 50, 50)
 }
 
 object DarkTheme extends ColorTheme {
@@ -56,6 +62,9 @@ object DarkTheme extends ColorTheme {
   override def buttonText: Color = new Color(220, 220, 220)
   override def progressBackground: Color = new Color(100, 100, 100)
   override def progressForeground: Color = new Color(100, 200, 100)
+  override def menuBackground: Color = new Color(100, 100, 100)
+  override def menuBackgroundHover: Color = new Color(75, 75, 75)
+  override def menuText: Color = new Color(220, 220, 220)
 }
 
 object ThemeSync {

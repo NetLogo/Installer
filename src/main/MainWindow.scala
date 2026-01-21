@@ -5,24 +5,31 @@ package org.nlogo.installer
 import java.awt.{ Dimension, Image }
 import java.awt.image.BufferedImage
 import java.io.File
-import java.nio.file.Files
+import java.nio.channels.ClosedByInterruptException
+import java.nio.file.{ Files, Paths }
+import java.nio.file.attribute.PosixFilePermission
+import java.util.HashSet
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFrame, JLabel, JPanel, JScrollPane, ScrollPaneConstants,
                      WindowConstants }
 import javax.swing.border.EmptyBorder
+
+import org.apache.commons.compress.archivers.zip.ZipFile
 
 import scala.util.Success
 
 import ujson.Obj
 
 class MainWindow extends JFrame with ThemeSync {
+  private var availableVersions = Map[String, String]()
+
   private val title = new JLabel("<html><b>Installed Versions</b></html>") {
     setFont(getFont.deriveFont(24f))
   }
 
   private var cards = Seq[AppCard]()
 
-  private val addCard = new AddCard
+  private val addCard = new AddCard(this)
 
   private val cardPanel = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
@@ -40,7 +47,6 @@ class MainWindow extends JFrame with ThemeSync {
     })
 
     add(cardPanel)
-
     add(Box.createVerticalStrut(Utils.GapSize))
     add(addCard)
   }
@@ -67,11 +73,10 @@ class MainWindow extends JFrame with ThemeSync {
     setLocation(screenSize.width / 2 - getWidth / 2, screenSize.height / 2 - getHeight / 2)
 
     findInstalled()
-
-    val checksums = getRootChecksums()
+    getAvailableVersions()
 
     cards.foreach { card =>
-      checksums.get(card.config.version).foreach { expected =>
+      availableVersions.get(card.config.version).foreach { expected =>
         val checksumPath = card.config.root.toPath.resolve(".checksum")
 
         if (Files.exists(checksumPath))
@@ -95,6 +100,120 @@ class MainWindow extends JFrame with ThemeSync {
       cards.headOption.foreach(_.setDefault(true))
 
     refreshCardPanel()
+  }
+
+  def addInstallation(): Unit = {
+    new OptionPane(this, "Add Installation", "Add an existing installation or download a new version?",
+                   Array("Download new", "Add existing")).getSelectedIndex match {
+      case 0 =>
+        val optionPane = new ComboBoxOptionPane(
+          this, "Select Version", "Select the version you would like to download.",
+          availableVersions.keys.toArray.sortBy(Utils.numericVersion), Array("Download", "Cancel")
+        )
+
+        if (optionPane.getSelectedIndex == 0)
+          install(optionPane.getSelectedOption)
+
+      case 1 =>
+        println("existing")
+
+      case _ =>
+    }
+  }
+
+  private def install(version: String): Unit = {
+    val root = Paths.get(Utils.appRoot, s"NetLogo $version").toFile
+
+    if (root.exists) {
+      new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
+    } else {
+      var progress = 0.0
+
+      val thread = new Thread {
+        override def run(): Unit = {
+          try {
+            Request.file("get_updated_files", Obj(
+              "os" -> Utils.os.name,
+              "arch" -> Utils.arch,
+              "version" -> version,
+              "checksums" -> Map()
+            )) match {
+              case Success(file) =>
+                updateFromZip(file, root)
+
+                file.delete()
+
+                progress = 1.0
+
+              case _ =>
+                new OptionPane(MainWindow.this, "Error", "Error downloading files from server.", Array("OK"))
+            }
+          } catch {
+            case _: InterruptedException | _: ClosedByInterruptException =>
+          }
+        }
+      }
+
+      thread.start()
+
+      if (new ProgressDialog(this, "Install", s"Downloading NetLogo ${version}...",
+                             () => progress, true).isCompleted) {
+        findInstalled()
+      } else {
+        thread.interrupt()
+
+        Utils.deleteRecursive(root)
+      }
+    }
+  }
+
+  def updateFromZip(source: File, dest: File): Unit = {
+    val builder = new ZipFile.Builder
+
+    builder.setFile(source)
+
+    val input = builder.get
+
+    val enumeration = input.getEntries
+
+    while (enumeration.hasMoreElements) {
+      val entry = enumeration.nextElement
+
+      if (!entry.isDirectory) {
+        val relativePath = Paths.get(entry.getName)
+        val localPath = dest.toPath.resolve(relativePath)
+
+        localPath.toFile.getParentFile.mkdirs()
+
+        val stream = input.getInputStream(entry)
+
+        Files.write(localPath, stream.readAllBytes())
+
+        stream.close()
+
+        if (Utils.os != OS.Windows) {
+          val mode = entry.getUnixMode
+
+          val perms = new HashSet[PosixFilePermission]()
+
+          if ((mode & 0400) != 0) perms.add(PosixFilePermission.OWNER_READ)
+          if ((mode & 0200) != 0) perms.add(PosixFilePermission.OWNER_WRITE)
+          if ((mode & 0100) != 0) perms.add(PosixFilePermission.OWNER_EXECUTE)
+
+          if ((mode & 0040) != 0) perms.add(PosixFilePermission.GROUP_READ)
+          if ((mode & 0020) != 0) perms.add(PosixFilePermission.GROUP_WRITE)
+          if ((mode & 0010) != 0) perms.add(PosixFilePermission.GROUP_EXECUTE)
+
+          if ((mode & 0004) != 0) perms.add(PosixFilePermission.OTHERS_READ)
+          if ((mode & 0002) != 0) perms.add(PosixFilePermission.OTHERS_WRITE)
+          if ((mode & 0001) != 0) perms.add(PosixFilePermission.OTHERS_EXECUTE)
+
+          Files.setPosixFilePermissions(localPath, perms)
+        }
+      }
+    }
+
+    input.close()
   }
 
   private def refreshCardPanel(): Unit = {
@@ -179,18 +298,16 @@ class MainWindow extends JFrame with ThemeSync {
     refreshCardPanel()
   }
 
-  private def getRootChecksums(): Map[String, String] = {
-    Request.json("get_root_checksums", Obj(
+  private def getAvailableVersions(): Unit = {
+    Request.json("get_available_versions", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch
     )) match {
       case Success(json) =>
-        json.obj.map((key, value) => (key -> value.str)).toMap
+        availableVersions = json.obj.map((key, value) => (key -> value.str)).toMap
 
       case _ =>
-        new OptionPane(this, "Error", "Error retrieving release information from server.", Seq("OK"))
-
-        Map()
+        new OptionPane(this, "Error", "Error retrieving release information from server.", Array("OK"))
     }
   }
 

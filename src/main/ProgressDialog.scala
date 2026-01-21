@@ -2,7 +2,7 @@
 
 package org.nlogo.installer
 
-import java.awt.{ BorderLayout, Color, Dimension, Frame, Graphics, Graphics2D, LinearGradientPaint }
+import java.awt.{ BorderLayout, Color, Dimension, Frame, Graphics, LinearGradientPaint }
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
@@ -86,7 +86,7 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: ()
       new Dimension(150, Utils.CornerDiameter)
 
     override def paintComponent(g: Graphics): Unit = {
-      val g2d = g.asInstanceOf[Graphics2D]
+      val g2d = Utils.initGraphics2D(g)
 
       g2d.setColor(backgroundColor)
       g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.CornerDiameter, Utils.CornerDiameter)

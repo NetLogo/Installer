@@ -26,6 +26,19 @@ object Utils {
 
   val arch: String = System.getProperty("os.arch")
 
+  val appRoot: String = {
+    os match {
+      case OS.Windows =>
+        "C:/Program Files"
+
+      case OS.Mac =>
+        "/Applications"
+
+      case OS.Linux =>
+        ""
+    }
+  }
+
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
 
@@ -59,6 +72,14 @@ object Utils {
 
   def listFilesRecursive(file: File): Array[File] =
     Option(file.listFiles).getOrElse(Array[File]()).flatMap(file => file +: listFilesRecursive(file))
+
+  def deleteRecursive(file: File): Boolean = {
+    if (file.isDirectory) {
+      file.listFiles.forall(deleteRecursive) && file.delete()
+    } else {
+      file.delete()
+    }
+  }
 }
 
 sealed abstract trait OS(val name: String)

@@ -5,12 +5,9 @@ package org.nlogo.installer
 import com.dynatrace.hash4j.hashing.Hashing
 
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
-import java.io.File
-import java.nio.file.{ Files, Paths }
+import java.nio.file.Files
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
-
-import org.apache.commons.compress.archivers.zip.ZipFile
 
 import scala.sys.process.Process
 import scala.util.{ Success, Try }
@@ -32,8 +29,6 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
   private val launchButton = new Button("Launch", () => launchApp())
   private val updateButton = new Button("Update", () => update())
-  private val defaultButton = new Button("Set as Default", () => mainWindow.setDefault(this))
-  private val uninstallButton = new Button("Uninstall", () => uninstall())
 
   private val updatePanel = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
@@ -48,6 +43,12 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     override def getPreferredSize: Dimension =
       this.getMinimumSize
   }
+
+  private val dropdown = new Dropdown("More", Array(
+    ("Set as Default", () => mainWindow.setDefault(this)),
+    ("Repair", () => repair()),
+    ("Uninstall", () => uninstall())
+  ))
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
   setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -67,9 +68,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   add(launchButton)
   add(updatePanel)
   add(Box.createHorizontalStrut(Utils.GapSize))
-  add(defaultButton)
-  add(Box.createHorizontalStrut(Utils.GapSize))
-  add(uninstallButton)
+  add(dropdown)
 
   initTheme()
 
@@ -103,10 +102,69 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     }).getOrElse(false)
 
     if (!success)
-      new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.", Seq("OK"))
+      new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.", Array("OK"))
   }
 
   private def update(): Unit = {
+    verifyFiles("Update").foreach { checksums =>
+      var progress = 0.0
+
+      new Thread {
+        override def run(): Unit = {
+          Request.file("get_updated_files", Obj(
+            "os" -> Utils.os.name,
+            "arch" -> Utils.arch,
+            "version" -> config.version,
+            "checksums" -> checksums
+          )) match {
+            case Success(file) =>
+              mainWindow.updateFromZip(file, config.root)
+
+              file.delete()
+
+              progress = 1.0
+
+            case _ =>
+              new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
+          }
+        }
+      }.start()
+
+      if (new ProgressDialog(mainWindow, "Update", "Downloading updated files...", () => progress, true).isCompleted)
+        setUpdatable(false)
+    }
+  }
+
+  private def repair(): Unit = {
+    verifyFiles("Repair").foreach { checksums =>
+      var progress = 0.0
+
+      new Thread {
+        override def run(): Unit = {
+          Request.file("get_updated_files", Obj(
+            "os" -> Utils.os.name,
+            "arch" -> Utils.arch,
+            "version" -> config.version,
+            "checksums" -> checksums
+          )) match {
+            case Success(file) =>
+              mainWindow.updateFromZip(file, config.root)
+
+              file.delete()
+
+              progress = 1.0
+
+            case _ =>
+              new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
+          }
+        }
+      }.start()
+
+      new ProgressDialog(mainWindow, "Repair", "Downloading updated files...", () => progress, true)
+    }
+  }
+
+  private def verifyFiles(title: String): Option[Map[String, String]] = {
     val files = Utils.listFilesRecursive(config.root).filterNot(_.isDirectory)
 
     val total = files.foldLeft(0L)(_ + _.length)
@@ -129,68 +187,20 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       }
     }.start()
 
-    if (!new ProgressDialog(mainWindow, "Update", "Preparing for update...",
-                            () => processed.toDouble / total, false).isCompleted)
-      return
-
-    var progress = 0.0
-
-    new Thread {
-      override def run(): Unit = {
-        Request.file("get_updated_files", Obj(
-          "os" -> Utils.os.name,
-          "arch" -> Utils.arch,
-          "version" -> config.version,
-          "checksums" -> checksums
-        )) match {
-          case Success(file) =>
-            val builder = new ZipFile.Builder
-
-            builder.setFile(file)
-
-            val input = builder.get
-
-            val enumeration = input.getEntries
-
-            while (enumeration.hasMoreElements) {
-              val entry = enumeration.nextElement
-
-              if (!entry.isDirectory) {
-                val relativePath = Paths.get(entry.getName)
-                val localPath = config.root.toPath.resolve(relativePath)
-
-                localPath.toFile.getParentFile.mkdirs()
-
-                val stream = input.getInputStream(entry)
-
-                Files.write(localPath, stream.readAllBytes())
-
-                stream.close()
-              }
-            }
-
-            input.close()
-
-            file.delete()
-
-            progress = 1.0
-
-          case _ =>
-            new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Seq("OK"))
-        }
-      }
-    }.start()
-
-    if (new ProgressDialog(mainWindow, "Update", "Downloading updated files...", () => progress, true).isCompleted)
-      setUpdatable(false)
+    if (new ProgressDialog(mainWindow, title, "Verifying files...",
+                           () => processed.toDouble / total, false).isCompleted) {
+      Some(checksums)
+    } else {
+      None
+    }
   }
 
   private def uninstall(): Unit = {
     if (new OptionPane(mainWindow, "Uninstall", s"Are you sure you want to uninstall ${config.name}?",
-                       Seq("Uninstall", "Cancel")).getSelectedIndex == 0) {
+                       Array("Uninstall", "Cancel")).getSelectedIndex == 0) {
       val success = {
         try {
-          deleteRecursive(config.root)
+          Utils.deleteRecursive(config.root)
         } catch {
           case _: SecurityException => false
         }
@@ -199,16 +209,8 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       if (success) {
         mainWindow.removeCard(this)
       } else {
-        new OptionPane(mainWindow, "Error", s"Unable to delete ${config.name}.", Seq("OK"))
+        new OptionPane(mainWindow, "Error", s"Unable to delete ${config.name}.", Array("OK"))
       }
-    }
-  }
-
-  private def deleteRecursive(file: File): Boolean = {
-    if (file.isDirectory) {
-      file.listFiles.forall(deleteRecursive) && file.delete()
-    } else {
-      file.delete()
     }
   }
 
@@ -249,7 +251,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
     launchButton.syncTheme(theme)
     updateButton.syncTheme(theme)
-    defaultButton.syncTheme(theme)
-    uninstallButton.syncTheme(theme)
+
+    dropdown.syncTheme(theme)
   }
 }
