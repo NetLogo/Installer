@@ -107,7 +107,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
   private def update(): Unit = {
     verifyFiles("Update").foreach { checksums =>
-      var progress = 0.0
+      var progress = -1.0
 
       new Thread {
         override def run(): Unit = {
@@ -117,10 +117,8 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
             "version" -> config.version,
             "checksums" -> checksums
           )) match {
-            case Success(file) =>
-              mainWindow.updateFromZip(file, config.root)
-
-              file.delete()
+            case Success(bytes) =>
+              mainWindow.updateFromZip(bytes, config.root)
 
               progress = 1.0
 
@@ -130,14 +128,14 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
         }
       }.start()
 
-      if (new ProgressDialog(mainWindow, "Update", "Downloading updated files...", () => progress, true).isCompleted)
+      if (new ProgressDialog(mainWindow, "Update", "Downloading updated files...", () => progress).isCompleted)
         setUpdatable(false)
     }
   }
 
   private def repair(): Unit = {
     verifyFiles("Repair").foreach { checksums =>
-      var progress = 0.0
+      var progress = -1.0
 
       new Thread {
         override def run(): Unit = {
@@ -147,20 +145,20 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
             "version" -> config.version,
             "checksums" -> checksums
           )) match {
-            case Success(file) =>
-              mainWindow.updateFromZip(file, config.root)
-
-              file.delete()
+            case Success(bytes) =>
+              mainWindow.updateFromZip(bytes, config.root)
 
               progress = 1.0
 
             case _ =>
+              progress = 1.0
+
               new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
           }
         }
       }.start()
 
-      new ProgressDialog(mainWindow, "Repair", "Downloading updated files...", () => progress, true)
+      new ProgressDialog(mainWindow, "Repair", "Downloading updated files...", () => progress)
     }
   }
 
@@ -187,8 +185,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       }
     }.start()
 
-    if (new ProgressDialog(mainWindow, title, "Verifying files...",
-                           () => processed.toDouble / total, false).isCompleted) {
+    if (new ProgressDialog(mainWindow, title, "Verifying files...", () => processed.toDouble / total).isCompleted) {
       Some(checksums)
     } else {
       None

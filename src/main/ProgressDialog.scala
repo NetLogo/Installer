@@ -6,12 +6,12 @@ import java.awt.{ BorderLayout, Color, Dimension, Frame, Graphics, LinearGradien
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-class ProgressDialog(parent: Frame, title: String, message: String, progress: () => Double, indeterminate: Boolean)
+class ProgressDialog(parent: Frame, title: String, message: String, progress: () => Double)
   extends JDialog(parent, title, true) with ThemeSync {
 
   private val label = new JLabel(message)
 
-  private val progressBar = new ProgressBar(indeterminate)
+  private val progressBar = new ProgressBar
 
   private val cancelButton = new Button("Cancel", () => setVisible(false))
 
@@ -65,8 +65,8 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: ()
     cancelButton.syncTheme(theme)
   }
 
-  private class ProgressBar(indeterminate: Boolean) extends JPanel with Transparent with ThemeSync {
-    private var progress = 0.0
+  private class ProgressBar extends JPanel with Transparent with ThemeSync {
+    private var progress = -1.0
 
     private var backgroundColor = Color.WHITE
     private var foregroundColor = Color.WHITE
@@ -91,7 +91,7 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: ()
       g2d.setColor(backgroundColor)
       g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.CornerDiameter, Utils.CornerDiameter)
 
-      if (indeterminate) {
+      if (progress == -1.0) {
         val offset = (((System.currentTimeMillis - start) % 2000) / 2000f) * getWidth * 2 - getWidth
 
         g2d.setPaint(new LinearGradientPaint(offset, getHeight / 2f, getWidth + offset, getHeight / 2f,

@@ -127,25 +127,25 @@ class MainWindow extends JFrame with ThemeSync {
     if (root.exists) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      var progress = 0.0
+      var progress = -1.0
+      var bytes = Array[Byte]()
 
-      val thread = new Thread {
+      var thread = new Thread {
         override def run(): Unit = {
           try {
-            Request.file("get_updated_files", Obj(
+            Request.file("get_version", Obj(
               "os" -> Utils.os.name,
               "arch" -> Utils.arch,
-              "version" -> version,
-              "checksums" -> Map()
-            )) match {
-              case Success(file) =>
-                updateFromZip(file, root)
-
-                file.delete()
+              "version" -> version
+            ), progress = _) match {
+              case Success(result) =>
+                bytes = result
 
                 progress = 1.0
 
               case _ =>
+                progress = 1.0
+
                 new OptionPane(MainWindow.this, "Error", "Error downloading files from server.", Array("OK"))
             }
           } catch {
@@ -156,29 +156,60 @@ class MainWindow extends JFrame with ThemeSync {
 
       thread.start()
 
-      if (new ProgressDialog(this, "Install", s"Downloading NetLogo ${version}...",
-                             () => progress, true).isCompleted) {
+      if (!new ProgressDialog(this, "Install", s"Downloading NetLogo $version...",
+                             () => progress).isCompleted) {
+        thread.interrupt()
+        thread.join()
+
+        return
+      }
+
+      thread.join()
+
+      progress = 0.0
+
+      thread = new Thread {
+        override def run(): Unit = {
+          try {
+            updateFromZip(bytes, root, value => {
+              if (isInterrupted)
+                throw new InterruptedException
+
+              progress = value
+            })
+
+            progress = 1.0
+          } catch {
+            case _: InterruptedException =>
+          }
+        }
+      }
+
+      thread.start()
+
+      if (new ProgressDialog(this, "Install", s"Installing NetLogo $version...", () => progress).isCompleted) {
         findInstalled()
+
+        thread.join()
       } else {
         thread.interrupt()
+        thread.join()
 
         Utils.deleteRecursive(root)
       }
     }
   }
 
-  def updateFromZip(source: File, dest: File): Unit = {
+  def updateFromZip(bytes: Array[Byte], dest: File, setProgress: Double => Unit = _ => {}): Unit = {
     val builder = new ZipFile.Builder
 
-    builder.setFile(source)
+    builder.setByteArray(bytes)
 
     val input = builder.get
 
-    val enumeration = input.getEntries
+    var processed = 0L
 
-    while (enumeration.hasMoreElements) {
-      val entry = enumeration.nextElement
-
+    input.stream.forEach { entry =>
       if (!entry.isDirectory) {
         val relativePath = Paths.get(entry.getName)
         val localPath = dest.toPath.resolve(relativePath)
@@ -211,6 +242,10 @@ class MainWindow extends JFrame with ThemeSync {
           Files.setPosixFilePermissions(localPath, perms)
         }
       }
+
+      processed += entry.getSize
+
+      setProgress(processed.toDouble / bytes.size)
     }
 
     input.close()
