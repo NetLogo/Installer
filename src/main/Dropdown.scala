@@ -8,9 +8,9 @@ import javax.swing.{ AbstractAction, Icon, JMenuItem, JPopupMenu, SwingConstants
 import javax.swing.border.EmptyBorder
 import javax.swing.plaf.basic.BasicMenuItemUI
 
-class Dropdown(title: String, actions: Array[(String, () => Unit)]) extends Button(title, new DropdownArrow) {
+class Dropdown(title: String, items: Array[MenuItem]) extends Button(title, new DropdownArrow) {
   private val menu = new PopupMenu {
-    actions.foreach((name, function) => add(new MenuItem(name, function)))
+    items.foreach(add)
   }
 
   setHorizontalTextPosition(SwingConstants.LEFT)

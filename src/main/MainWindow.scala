@@ -79,11 +79,17 @@ class MainWindow extends JFrame with ThemeSync {
     getAvailableVersions()
 
     cards.foreach { card =>
-      availableVersions.get(card.config.version).foreach { expected =>
-        val checksumPath = card.config.root.toPath.resolve(".checksum")
+      availableVersions.get(card.config.version) match {
+        case Some(expected) =>
+          val checksumPath = card.config.root.toPath.resolve(".checksum")
 
-        if (Files.exists(checksumPath))
-          card.setUpdatable(expected != Files.readString(checksumPath).trim)
+          if (Files.exists(checksumPath))
+            card.setUpdatable(expected != Files.readString(checksumPath).trim)
+
+          card.setReparable(true)
+
+        case _ =>
+          card.setReparable(false)
       }
     }
 

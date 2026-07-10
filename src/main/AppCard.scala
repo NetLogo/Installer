@@ -48,10 +48,14 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       this.getMinimumSize
   }
 
+  private val repairItem = new MenuItem("Repair", () => repair()) {
+    setEnabled(false)
+  }
+
   private val dropdown = new Dropdown("More", Array(
-    ("Set as Default", () => mainWindow.setDefault(this)),
-    ("Repair", () => repair()),
-    ("Uninstall", () => uninstall())
+    new MenuItem("Set as Default", () => mainWindow.setDefault(this)),
+    repairItem,
+    new MenuItem("Uninstall", () => uninstall())
   ))
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
@@ -87,6 +91,10 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
   def setUpdatable(updatable: Boolean): Unit = {
     updatePanel.setVisible(updatable)
+  }
+
+  def setReparable(reparable: Boolean): Unit = {
+    repairItem.setEnabled(reparable)
   }
 
   private def launchApp(): Unit = {
