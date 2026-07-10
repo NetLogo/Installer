@@ -9,7 +9,7 @@ import java.nio.file.{ Files, Paths }
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
 import javax.imageio.ImageIO
-import javax.swing.{ Box, BoxLayout, ImageIcon, JFrame, JLabel, JPanel, JScrollPane, ScrollPaneConstants,
+import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, JScrollPane, ScrollPaneConstants,
                      WindowConstants }
 import javax.swing.border.EmptyBorder
 
@@ -75,32 +75,17 @@ class MainWindow extends JFrame with ThemeSync {
 
     setLocation(screenSize.width / 2 - getWidth / 2, screenSize.height / 2 - getHeight / 2)
 
-    findInstalled()
     getAvailableVersions()
+    findInstalled()
 
-    cards.foreach { card =>
-      availableVersions.get(card.config.version) match {
-        case Some(expected) =>
-          val checksumPath = card.config.root.toPath.resolve(".checksum")
-
-          if (Files.exists(checksumPath))
-            card.setUpdatable(expected != Files.readString(checksumPath).trim)
-
-          card.setReparable(true)
-
-        case _ =>
-          card.setReparable(false)
-      }
-    }
-
-    cards.find(card => Utils.getDefaultVersion.exists(_ == card.config.version))
+    Prefs.get("defaultVersion").flatMap(version => cards.find(_.config.version == version))
       .orElse(cards.headOption).foreach(setDefault)
 
     initTheme()
   }
 
   def setDefault(default: AppCard): Unit = {
-    Utils.setDefaultVersion(default.config.version)
+    Prefs.put("defaultVersion", default.config.version)
 
     cards.foreach(card => card.setDefault(card == default))
   }
@@ -133,18 +118,44 @@ class MainWindow extends JFrame with ThemeSync {
           install(optionPane.getSelectedOption)
 
       case 1 =>
-        println("existing")
+        val dialog = new JFileChooser
+
+        dialog.setDialogTitle("Select Root Directory")
+        dialog.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
+
+        if (dialog.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+          verifyRoot(dialog.getSelectedFile) match {
+            case Some(config) if cards.exists(_.config.version == config.version) =>
+              new OptionPane(this, "Already Exists", s"${config.name} is already installed.", Array("OK"))
+
+            case Some(config) =>
+              putExtraPaths(getExtraPaths :+ config.root)
+
+              findInstalled()
+
+            case _ =>
+              new OptionPane(this, "Invalid", "The selected directory is not a valid NetLogo installation.",
+                             Array("OK"))
+          }
+        }
 
       case _ =>
     }
   }
 
-  private def install(version: String): Unit = {
-    val root = Paths.get(Utils.appRoot, s"NetLogo $version").toFile
+  private def getExtraPaths: Array[File] =
+    Prefs.get("extraPaths").fold(Array[File]())(_.split("\n").map(new File(_)))
 
-    if (root.exists) {
+  private def putExtraPaths(paths: Array[File]): Unit = {
+    Prefs.put("extraPaths", paths.map(_.getAbsolutePath).mkString("\n"))
+  }
+
+  private def install(version: String): Unit = {
+    if (cards.exists(_.config.version == version)) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
+      val root = Paths.get(Utils.appRoot, s"NetLogo $version").toFile
+
       downloadVersion(version).foreach { data =>
         if (installUpdate("Install", s"Installing NetLogo $version...", data, root))
           findInstalled()
@@ -277,34 +288,56 @@ class MainWindow extends JFrame with ThemeSync {
   // this method looks in the standard platform-specific locations to find NetLogo installations,
   // extracting the version number and the relevant paths for the installation. (Isaac B 8/25/25)
   private def findInstalled(): Unit = {
-    val paths: Seq[PathInfo] = Utils.os match {
+    val configs: Array[AppConfig] = (Utils.os match {
       case OS.Windows =>
         File.listRoots.flatMap { file =>
           Option(file.toPath.resolve("Program Files").toFile.listFiles).getOrElse(Array[File]()) ++
             Option(file.toPath.resolve("Program Files (x86)").toFile.listFiles).getOrElse(Array[File]())
-        }.collect {
-          case file if file.getName.contains("NetLogo") =>
-            Utils.listFilesRecursive(file).find { f =>
-              """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe""".r.matches(f.getName)
-            }.map(exe => PathInfo(file.getName, file, exe))
-        }.flatten.toSeq
+        }.flatMap(verifyRoot)
 
       case OS.Mac =>
         File.listRoots.flatMap { file =>
           Option(file.toPath.resolve("Applications").toFile.listFiles).getOrElse(Array[File]())
-        }.collect {
-          case file if file.getName.contains("NetLogo") =>
-            Utils.listFilesRecursive(file).find { f =>
-              """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$""".r.matches(f.getName)
-            }.map(app => PathInfo(file.getName, app.getParentFile, app))
-        }.flatten.toSeq
+        }.flatMap(verifyRoot)
 
       case _ =>
-        Seq()
-    }
+        Array[AppConfig]()
+    }) ++ getExtraPaths.flatMap(verifyRoot)
 
-    val configs: Seq[AppConfig] = paths.map {
-      case PathInfo(name, root, exec) =>
+    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map { config =>
+      val card = new AppCard(config, this)
+
+      availableVersions.get(config.version) match {
+        case Some(expected) =>
+          val checksumPath = config.root.toPath.resolve(".checksum")
+
+          if (Files.exists(checksumPath))
+            card.setUpdatable(expected != Files.readString(checksumPath).trim)
+
+          card.setReparable(true)
+
+        case _ =>
+          card.setReparable(false)
+      }
+
+      card
+    }.toSeq
+
+    refreshCardPanel()
+  }
+
+  private def verifyRoot(root: File): Option[AppConfig] = {
+    if (root.getName.startsWith("NetLogo")) {
+      val regex: String = Utils.os match {
+        case OS.Windows => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe"""
+        case OS.Mac => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$"""
+        case OS.Linux => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?"""
+      }
+
+      Utils.listFilesRecursive(root).find { f =>
+        regex.r.matches(f.getName)
+      }.map { exe =>
+        val name: String = root.getName
         val version: String = name.stripPrefix("NetLogo ")
 
         val image: Image = ImageIO.read(getClass.getResource({
@@ -315,12 +348,11 @@ class MainWindow extends JFrame with ThemeSync {
           }
         }))
 
-        AppConfig(name, version, resizeImage(image), root, exec)
+        AppConfig(name, version, resizeImage(image), root, exe)
+      }
+    } else {
+      None
     }
-
-    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map(AppCard(_, this))
-
-    refreshCardPanel()
   }
 
   private def getAvailableVersions(): Unit = {
@@ -346,6 +378,4 @@ class MainWindow extends JFrame with ThemeSync {
 
     addCard.syncTheme(theme)
   }
-
-  private case class PathInfo(name: String, root: File, exec: File)
 }
