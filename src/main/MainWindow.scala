@@ -82,9 +82,13 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   def setDefault(default: AppCard): Unit = {
-    Prefs.put("defaultVersion", default.config.version)
+    if (Defaults.setDefault(default.config)) {
+      Prefs.put("defaultVersion", default.config.version)
 
-    cards.foreach(card => card.setDefault(card == default))
+      cards.foreach(card => card.setDefault(card == default))
+    } else {
+      new OptionPane(this, "Error", "Failed to set default NetLogo version.", Array("OK"))
+    }
   }
 
   def removeCard(card: AppCard): Unit = {
