@@ -93,12 +93,15 @@ class MainWindow extends JFrame with ThemeSync {
       }
     }
 
-    cards.headOption.foreach(_.setDefault(true))
+    cards.find(card => Utils.getDefaultVersion.exists(_ == card.config.version))
+      .orElse(cards.headOption).foreach(setDefault)
 
     initTheme()
   }
 
   def setDefault(default: AppCard): Unit = {
+    Utils.setDefaultVersion(default.config.version)
+
     cards.foreach(card => card.setDefault(card == default))
   }
 
@@ -106,7 +109,7 @@ class MainWindow extends JFrame with ThemeSync {
     cards = cards.filter(_ != card)
 
     if (card.isDefault)
-      cards.headOption.foreach(_.setDefault(true))
+      cards.headOption.foreach(setDefault)
 
     refreshCardPanel()
   }

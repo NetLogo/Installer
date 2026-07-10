@@ -5,6 +5,7 @@ package org.nlogo.installer
 import java.awt.{ Color, Cursor, Graphics, Graphics2D, RenderingHints, Window }
 import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
+import java.util.prefs.Preferences
 import javax.swing.JComponent
 
 object Utils {
@@ -37,6 +38,19 @@ object Utils {
       case OS.Linux =>
         ""
     }
+  }
+
+  private val prefs: Preferences = Preferences.userRoot.node("/org/nlogo/NetLogoInstaller")
+
+  private var defaultVersion: Option[String] = Option(prefs.get("defaultVersion", null))
+
+  def getDefaultVersion: Option[String] =
+    defaultVersion
+
+  def setDefaultVersion(version: String): Unit = {
+    defaultVersion = Option(version)
+
+    prefs.put("defaultVersion", version)
   }
 
   def initGraphics2D(g: Graphics): Graphics2D = {
