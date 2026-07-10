@@ -276,10 +276,8 @@ class MainWindow extends JFrame with ThemeSync {
     new ImageIcon(bufferedImage)
   }
 
-  // this method looks in the standard platform-specific locations to find NetLogo installations. it
-  // extracts both the version number and the app icon from each executable, which unfortunately
-  // requires native code since Java doesn't provide tools to load image data from platform-specific
-  // icon types. that code can be found in the `iconext` directory. (Isaac B 8/25/25)
+  // this method looks in the standard platform-specific locations to find NetLogo installations,
+  // extracting the version number and the relevant paths for the installation. (Isaac B 8/25/25)
   private def findInstalled(): Unit = {
     val paths: Seq[PathInfo] = Utils.os match {
       case OS.Windows =>
@@ -290,7 +288,7 @@ class MainWindow extends JFrame with ThemeSync {
           case file if file.getName.contains("NetLogo") =>
             Utils.listFilesRecursive(file).find { f =>
               """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe""".r.matches(f.getName)
-            }.map(exe => PathInfo(file.getName, exe, file, exe))
+            }.map(exe => PathInfo(file.getName, file, exe))
         }.flatten.toSeq
 
       case OS.Mac =>
@@ -300,11 +298,7 @@ class MainWindow extends JFrame with ThemeSync {
           case file if file.getName.contains("NetLogo") =>
             Utils.listFilesRecursive(file).find { f =>
               """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$""".r.matches(f.getName)
-            }.flatMap { app =>
-              app.toPath.resolve("Contents/Resources").toFile.listFiles.find { icon =>
-                """^NetLogo.*\.icns$""".r.matches(icon.getName)
-              }.map(icon => PathInfo(file.getName, icon, app.getParentFile, app))
-            }
+            }.map(app => PathInfo(file.getName, app.getParentFile, app))
         }.flatten.toSeq
 
       case _ =>
@@ -312,20 +306,18 @@ class MainWindow extends JFrame with ThemeSync {
     }
 
     val configs: Seq[AppConfig] = paths.map {
-      case PathInfo(name, icon, root, exec) =>
-        val image = IconExt.extractIcon(icon.getAbsolutePath) match {
-          case ExtResult(pixels, width, height) if pixels.nonEmpty =>
-            val buffer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+      case PathInfo(name, root, exec) =>
+        val version: String = name.stripPrefix("NetLogo ")
 
-            buffer.setRGB(0, 0, width, height, pixels, 0, width)
+        val image: Image = ImageIO.read(getClass.getResource({
+          if (Utils.numericVersion(version) > Utils.numericVersion("6.4.0")) {
+            "/images/NetLogoNew.png"
+          } else {
+            "/images/NetLogoOld.png"
+          }
+        }))
 
-            buffer
-
-          case _ =>
-            ImageIO.read(new File("NetLogo.png"))
-        }
-
-        AppConfig(name, name.stripPrefix("NetLogo "), resizeImage(image), root, exec)
+        AppConfig(name, version, resizeImage(image), root, exec)
     }
 
     cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map(AppCard(_, this))
@@ -357,5 +349,5 @@ class MainWindow extends JFrame with ThemeSync {
     addCard.syncTheme(theme)
   }
 
-  private case class PathInfo(name: String, icon: File, root: File, exec: File)
+  private case class PathInfo(name: String, root: File, exec: File)
 }
