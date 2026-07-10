@@ -78,9 +78,6 @@ class MainWindow extends JFrame with ThemeSync {
     getAvailableVersions()
     findInstalled()
 
-    Prefs.get("defaultVersion").flatMap(version => cards.find(_.config.version == version))
-      .orElse(cards.headOption).foreach(setDefault)
-
     initTheme()
   }
 
@@ -322,6 +319,9 @@ class MainWindow extends JFrame with ThemeSync {
 
       card
     }.toSeq
+
+    Prefs.get("defaultVersion").flatMap(version => cards.find(_.config.version == version))
+      .orElse(cards.headOption).foreach(setDefault)
 
     refreshCardPanel()
   }
