@@ -2,11 +2,32 @@
 
 package org.nlogo.installer
 
-import java.awt.{ BorderLayout, Color, Dimension, Frame, Graphics, LinearGradientPaint }
+import java.awt.{ BorderLayout, Color, Dimension, EventQueue, Frame, Graphics, LinearGradientPaint }
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-class ProgressDialog(parent: Frame, title: String, message: String, progress: () => Double)
+class ProgressTracker {
+  private var progress = -1.0
+  private var abort = false
+
+  def setProgress(progress: Double): Unit = synchronized {
+    this.progress = progress
+  }
+
+  def getProgress: Double = synchronized {
+    this.progress
+  }
+
+  def requestAbort(): Unit = synchronized {
+    abort = true
+  }
+
+  def abortRequested: Boolean = synchronized {
+    abort
+  }
+}
+
+class ProgressDialog(parent: Frame, title: String, message: String, progress: ProgressTracker)
   extends JDialog(parent, title, true) with ThemeSync {
 
   private val label = new JLabel(message)
@@ -40,21 +61,23 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: ()
   new Thread {
     override def run(): Unit = {
       while {
-        progressBar.setValue(progress())
+        progressBar.setValue(progress.getProgress)
 
         !isCompleted
       } do {
         Thread.sleep(100)
       }
 
-      setVisible(false)
+      EventQueue.invokeLater(() => {
+        setVisible(false)
+      })
     }
   }.start()
 
   setVisible(true)
 
   def isCompleted: Boolean =
-    progressBar.getProgress >= 1
+    progress.getProgress >= 1
 
   override def syncTheme(theme: ColorTheme): Unit = {
     getContentPane.setBackground(theme.windowBackground)
@@ -78,9 +101,6 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: ()
 
       repaint()
     }
-
-    def getProgress: Double =
-      progress
 
     override def getPreferredSize: Dimension =
       new Dimension(150, Utils.CornerDiameter)

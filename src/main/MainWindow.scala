@@ -5,7 +5,6 @@ package org.nlogo.installer
 import java.awt.{ Dimension, Image }
 import java.awt.image.BufferedImage
 import java.io.File
-import java.nio.channels.ClosedByInterruptException
 import java.nio.file.{ Files, Paths }
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
@@ -16,11 +15,15 @@ import javax.swing.border.EmptyBorder
 
 import org.apache.commons.compress.archivers.zip.ZipFile
 
+import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.duration.Duration
 import scala.util.Success
 
 import ujson.Obj
 
 class MainWindow extends JFrame with ThemeSync {
+  private implicit val ec: ExecutionContext = ExecutionContext.global
+
   private var availableVersions = Map[String, String]()
 
   private val title = new JLabel("<html><b>Installed Versions</b></html>") {
@@ -106,6 +109,12 @@ class MainWindow extends JFrame with ThemeSync {
     new OptionPane(this, "Add Installation", "Add an existing installation or download a new version?",
                    Array("Download new", "Add existing")).getSelectedIndex match {
       case 0 =>
+        if (availableVersions.isEmpty) {
+          new OptionPane(this, "Error", "Error retrieving available versions from server.", Array("OK"))
+
+          return
+        }
+
         val optionPane = new ComboBoxOptionPane(
           this, "Select Version", "Select the version you would like to download.",
           availableVersions.keys.toArray.sortBy(Utils.numericVersion), Array("Download", "Cancel")
@@ -127,80 +136,52 @@ class MainWindow extends JFrame with ThemeSync {
     if (root.exists) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      var progress = -1.0
-      var bytes = Array[Byte]()
-
-      var thread = new Thread {
-        override def run(): Unit = {
-          try {
-            Request.file("get_version", Obj(
-              "os" -> Utils.os.name,
-              "arch" -> Utils.arch,
-              "version" -> version
-            ), progress = _) match {
-              case Success(result) =>
-                bytes = result
-
-                progress = 1.0
-
-              case _ =>
-                progress = 1.0
-
-                new OptionPane(MainWindow.this, "Error", "Error downloading files from server.", Array("OK"))
-            }
-          } catch {
-            case _: InterruptedException | _: ClosedByInterruptException =>
-          }
-        }
-      }
-
-      thread.start()
-
-      if (!new ProgressDialog(this, "Install", s"Downloading NetLogo $version...",
-                             () => progress).isCompleted) {
-        thread.interrupt()
-        thread.join()
-
-        return
-      }
-
-      thread.join()
-
-      progress = 0.0
-
-      thread = new Thread {
-        override def run(): Unit = {
-          try {
-            updateFromZip(bytes, root, value => {
-              if (isInterrupted)
-                throw new InterruptedException
-
-              progress = value
-            })
-
-            progress = 1.0
-          } catch {
-            case _: InterruptedException =>
-          }
-        }
-      }
-
-      thread.start()
-
-      if (new ProgressDialog(this, "Install", s"Installing NetLogo $version...", () => progress).isCompleted) {
-        findInstalled()
-
-        thread.join()
-      } else {
-        thread.interrupt()
-        thread.join()
-
-        Utils.deleteRecursive(root)
+      downloadVersion(version).foreach { data =>
+        if (installUpdate("Install", s"Installing NetLogo $version...", data, root))
+          findInstalled()
       }
     }
   }
 
-  def updateFromZip(bytes: Array[Byte], dest: File, setProgress: Double => Unit = _ => {}): Unit = {
+  private def downloadVersion(version: String): Option[Array[Byte]] = {
+    val progress = new ProgressTracker
+
+    val response: FileResponse = Request.file("get_version", Obj(
+      "os" -> Utils.os.name,
+      "arch" -> Utils.arch,
+      "version" -> version
+    ), progress)
+
+    if (new ProgressDialog(this, "Install", s"Downloading NetLogo $version...", progress).isCompleted) {
+      Option(Await.result(response.data, Duration.Inf)).filter(_.nonEmpty).orElse {
+        new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
+
+        None
+      }
+    } else {
+      response.connection.disconnect()
+
+      None
+    }
+  }
+
+  def installUpdate(title: String, message: String, data: Array[Byte], dest: File): Boolean = {
+    val progress = new ProgressTracker
+
+    Future {
+      updateFromZip(data, dest, progress)
+    }.recover(_ => Utils.deleteRecursive(dest))
+
+    if (new ProgressDialog(this, title, message, progress).isCompleted) {
+      true
+    } else {
+      progress.requestAbort()
+
+      false
+    }
+  }
+
+  private def updateFromZip(bytes: Array[Byte], dest: File, progress: ProgressTracker): Unit = {
     val builder = new ZipFile.Builder
 
     builder.setByteArray(bytes)
@@ -210,6 +191,12 @@ class MainWindow extends JFrame with ThemeSync {
     var processed = 0L
 
     input.stream.forEach { entry =>
+      if (progress.abortRequested) {
+        input.close()
+
+        throw new InterruptedException
+      }
+
       if (!entry.isDirectory) {
         val relativePath = Paths.get(entry.getName)
         val localPath = dest.toPath.resolve(relativePath)
@@ -245,10 +232,12 @@ class MainWindow extends JFrame with ThemeSync {
 
       processed += entry.getSize
 
-      setProgress(processed.toDouble / bytes.size)
+      progress.setProgress(processed.toDouble / bytes.size)
     }
 
     input.close()
+
+    progress.setProgress(1.0)
   }
 
   private def refreshCardPanel(): Unit = {

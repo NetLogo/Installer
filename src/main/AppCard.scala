@@ -9,12 +9,16 @@ import java.nio.file.Files
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
+import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.duration.Duration
 import scala.sys.process.Process
-import scala.util.{ Success, Try }
+import scala.util.Try
 
 import ujson.Obj
 
 class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
+  private implicit val ec: ExecutionContext = ExecutionContext.global
+
   private var backgroundColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
   private var borderHighlightColor: Color = Color.WHITE
@@ -106,59 +110,14 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   }
 
   private def update(): Unit = {
-    verifyFiles("Update").foreach { checksums =>
-      var progress = -1.0
-
-      new Thread {
-        override def run(): Unit = {
-          Request.file("get_updated_files", Obj(
-            "os" -> Utils.os.name,
-            "arch" -> Utils.arch,
-            "version" -> config.version,
-            "checksums" -> checksums
-          )) match {
-            case Success(bytes) =>
-              mainWindow.updateFromZip(bytes, config.root)
-
-              progress = 1.0
-
-            case _ =>
-              new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
-          }
-        }
-      }.start()
-
-      if (new ProgressDialog(mainWindow, "Update", "Downloading updated files...", () => progress).isCompleted)
-        setUpdatable(false)
+    verifyFiles("Update").flatMap(downloadUpdate("Update", _)).foreach { data =>
+      setUpdatable(!mainWindow.installUpdate("Update", "Installing updated files...", data, config.root))
     }
   }
 
   private def repair(): Unit = {
-    verifyFiles("Repair").foreach { checksums =>
-      var progress = -1.0
-
-      new Thread {
-        override def run(): Unit = {
-          Request.file("get_updated_files", Obj(
-            "os" -> Utils.os.name,
-            "arch" -> Utils.arch,
-            "version" -> config.version,
-            "checksums" -> checksums
-          )) match {
-            case Success(bytes) =>
-              mainWindow.updateFromZip(bytes, config.root)
-
-              progress = 1.0
-
-            case _ =>
-              progress = 1.0
-
-              new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
-          }
-        }
-      }.start()
-
-      new ProgressDialog(mainWindow, "Repair", "Downloading updated files...", () => progress)
+    verifyFiles("Repair").flatMap(downloadUpdate("Repair", _)).foreach { data =>
+      mainWindow.installUpdate("Repair", "Installing repaired files...", data, config.root)
     }
   }
 
@@ -170,24 +129,51 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
     var checksums = Map[String, String]()
 
-    new Thread {
-      override def run(): Unit = {
-        files.foreach { file =>
-          val path = file.toPath
-          val relativePath = config.root.toPath.relativize(path).toString.replace("\\", "/")
+    val progress = new ProgressTracker
 
-          val bytes = Files.readAllBytes(path)
+    Future {
+      files.foreach { file =>
+        val path = file.toPath
+        val relativePath = config.root.toPath.relativize(path).toString.replace("\\", "/")
 
-          checksums = checksums + (relativePath -> Hashing.xxh3_64.hashBytesToLong(bytes).toString)
+        val bytes = Files.readAllBytes(path)
 
-          processed += bytes.size
-        }
+        checksums = checksums + (relativePath -> Hashing.xxh3_64.hashBytesToLong(bytes).toString)
+
+        processed += bytes.size
+
+        progress.setProgress(processed.toDouble / total)
       }
-    }.start()
 
-    if (new ProgressDialog(mainWindow, title, "Verifying files...", () => processed.toDouble / total).isCompleted) {
+      progress.setProgress(1.0)
+    }
+
+    if (new ProgressDialog(mainWindow, title, "Verifying files...", progress).isCompleted) {
       Some(checksums)
     } else {
+      None
+    }
+  }
+
+  private def downloadUpdate(title: String, checksums: Map[String, String]): Option[Array[Byte]] = {
+    val progress = new ProgressTracker
+
+    val response: FileResponse = Request.file("get_updated_files", Obj(
+      "os" -> Utils.os.name,
+      "arch" -> Utils.arch,
+      "version" -> config.version,
+      "checksums" -> checksums
+    ), progress)
+
+    if (new ProgressDialog(mainWindow, title, "Downloading updated files...", progress).isCompleted) {
+      Option(Await.result(response.data, Duration.Inf)).filter(_.nonEmpty).orElse {
+        new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
+
+        None
+      }
+    } else {
+      response.connection.disconnect()
+
       None
     }
   }
