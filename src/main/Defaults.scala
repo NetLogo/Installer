@@ -8,10 +8,10 @@ import scala.sys.process.Process
 
 object Defaults {
   def setDefault(config: AppConfig): Boolean = {
-    val platformPath: String = s"/defaults/${Utils.os.name}/${Utils.arch}/defaults${Utils.os.exec}"
+    val platformPath: String = s"/defaults/${Utils.os.name}/${Utils.arch}/defaults${Utils.os.bin}"
 
     Option(getClass.getResourceAsStream(platformPath)).fold(false) { stream =>
-      val path: Path = Files.createTempFile(null, Utils.os.exec)
+      val path: Path = Files.createTempFile(null, Utils.os.bin)
 
       path.toFile.setExecutable(true)
       path.toFile.deleteOnExit()

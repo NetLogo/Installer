@@ -82,12 +82,12 @@ object Utils {
   }
 }
 
-sealed abstract trait OS(val name: String, val exec: String)
+sealed abstract trait OS(val name: String, val exec: String, val bin: String)
 
 object OS {
-  case object Windows extends OS("windows", ".exe")
-  case object Mac extends OS("mac", ".app")
-  case object Linux extends OS("linux", "")
+  case object Windows extends OS("windows", ".exe", ".exe")
+  case object Mac extends OS("mac", ".app", "")
+  case object Linux extends OS("linux", "", "")
 }
 
 trait Transparent extends JComponent {

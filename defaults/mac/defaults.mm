@@ -1,7 +1,7 @@
 #import <AppKit/AppKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
-bool setDefault(const char* path, const char* extension)
+int setDefault(const char* path, const char* extension)
 {
     NSURL* appURL = [ NSURL fileURLWithPath: [ NSString stringWithUTF8String: path ] ];
     UTType* contentType = [ UTType typeWithFilenameExtension: [ NSString stringWithUTF8String: extension ] ];
@@ -21,7 +21,7 @@ bool setDefault(const char* path, const char* extension)
 
     dispatch_semaphore_wait(lock, DISPATCH_TIME_FOREVER);
 
-    return result == 0;
+    return result;
 }
 
 int main(int argc, char** argv)
@@ -31,8 +31,8 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    return setDefault(argv[1], "nlogo") &&
-           setDefault(argv[1], "nlogox") &&
-           setDefault(argv[2], "nlogo3d") &&
+    return setDefault(argv[1], "nlogo") ||
+           setDefault(argv[1], "nlogox") ||
+           setDefault(argv[2], "nlogo3d") ||
            setDefault(argv[2], "nlogox3d");
 }
