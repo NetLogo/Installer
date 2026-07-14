@@ -332,15 +332,11 @@ class MainWindow extends JFrame with ThemeSync {
 
   private def verifyRoot(root: File): Option[AppConfig] = {
     if (root.getName.startsWith("NetLogo")) {
-      val regex: String = Utils.os match {
-        case OS.Windows => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.exe"""
-        case OS.Mac => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?.app$"""
-        case OS.Linux => """(?i)^NetLogo( [0-9\.]+(-(beta|rc)\d+)?)?"""
-      }
+      val regex: String = s"(?i)^NetLogo( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}$$"
 
       Utils.listFilesRecursive(root).find { f =>
         regex.r.matches(f.getName)
-      }.map { exe =>
+      }.map { _ =>
         val name: String = root.getName
         val version: String = name.stripPrefix("NetLogo ")
 
@@ -352,7 +348,7 @@ class MainWindow extends JFrame with ThemeSync {
           }
         }))
 
-        AppConfig(name, version, resizeImage(image), root, exe)
+        AppConfig(name, version, resizeImage(image), root)
       }
     } else {
       None
