@@ -33,6 +33,7 @@ object Dist {
 
       val appVersion: String = (Compile / version).value
       val dist: Path = baseDirectory.value.toPath.resolve("dist")
+      val config: Path = dist.resolve(platform.os)
       val input: Path = dist.resolve("input")
       val output: Path = dist.resolve("output")
       val name: String = "NetLogo Installer"
@@ -55,50 +56,52 @@ object Dist {
 
       platform match {
         case Platform("windows", arch) =>
-          packageWindows(arch, appVersion, dist, output, name)
+          packageWindows(arch, appVersion, dist, config, output, name)
 
         case Platform("mac", arch) =>
-          packageMac(arch, appVersion, dist, output, name)
+          packageMac(arch, appVersion, dist, config, output, name)
 
         case Platform("linux", arch) =>
-          packageLinux(arch, appVersion, dist, output, name)
+          packageLinux(arch, appVersion, dist, config, output, name)
 
         case _ => throw new Exception(s"Invalid platform: $platform")
       }
     }
   }
 
-  private def packageWindows(arch: String, version: String, dist: Path, output: Path, name: String): Unit = {
+  private def packageWindows(arch: String, version: String, dist: Path, config: Path, output: Path,
+                             name: String): Unit = {
     val vs = new File("C:/Program Files (x86)/Windows Kits/10/bin")
 
     if (!vs.exists)
       throw new Exception("Visual Studio dev tools are not installed.")
 
     val mt: Path = vs.listFiles.filter(_.getName.startsWith("10.")).sorted.last.toPath.resolve(arch).resolve("mt.exe")
-
-    val exe: Path = dist.getParent.relativize(output).resolve(name).resolve(name + ".exe")
+    val exe: Path = dist.getParent.relativize(output).resolve(name).resolve(s"$name.exe")
 
     Files.setAttribute(exe, "dos:readonly", false)
 
-    run(Seq(mt.toString, "-manifest", dist.resolve("windows").resolve("Installer.manifest").toString,
-            "-outputresource:" + exe.toString + ";1"))
-
-    val config = Map[String, String](
-      "arch" -> arch,
-      "version" -> version,
-      "upgradeCode" -> UUID.randomUUID.toString.toUpperCase,
-      "root" -> output.resolve(name).toString.replaceAll("\\\\", "\\\\\\\\"),
-      "name" -> name
-    )
-
-    run(Seq("wix", "build", "-arch", arch, "-src", dist.resolve("windows").resolve("Installer.wxs").toString,
-            "-bindpath", output.resolve(name).toString, "-out", output.resolve(name + ".msi").toString,
-            "-pdbtype", "none") ++ config.flatMap { case (k, v) => Seq("-define", k + "=" + v) })
+    run(Seq(mt.toString, "-manifest", config.resolve("Installer.manifest").toString, s"-outputresource:$exe;1"))
+    run(Seq("wix", "build", "-arch", arch, "-src", config.resolve("Installer.wxs").toString,
+            "-bindpath", output.resolve(name).toString, "-out", output.resolve(s"$name.msi").toString,
+            "-pdbtype", "none") ++
+          Seq(
+            "-define", s"arch=$arch",
+            "-define", s"version=$version",
+            "-define", s"upgradeCode=${UUID.randomUUID.toString.toUpperCase}",
+            "-define", s"root=${output.resolve(name).toString.replaceAll("\\\\", "\\\\\\\\")}",
+            "-define", s"name=$name"
+          ))
   }
 
-  private def packageMac(arch: String, version: String, dist: Path, output: Path, name: String): Unit = {}
+  private def packageMac(arch: String, version: String, dist: Path, config: Path, output: Path, name: String): Unit = {
+    run(Seq("create-dmg", "--volname", name, "--background", config.resolve("background.png").toString,
+            "--window-size", "500", "375", "--icon", s"$name.app", "125", "137", "--hide-extension", s"$name.app",
+            "--app-drop-link", "375", "137", output.resolve(s"$name.dmg").toString, output.toString))
+  }
 
-  private def packageLinux(arch: String, version: String, dist: Path, output: Path, name: String): Unit = {}
+  private def packageLinux(arch: String, version: String, dist: Path, config: Path, output: Path,
+                           name: String): Unit = {}
 
   private def deleteRecursive(file: File): Unit = {
     if (file.isDirectory)

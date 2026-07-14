@@ -4,7 +4,7 @@ import org.nlogo.installer.Dist
 
 lazy val root = project.in(file(".")).settings(
   name := "netlogo-installer",
-  version := "0.1.0",
+  version := "1.0.0",
   organization := "org.nlogo",
   licenses += ("GPL-2.0", url("http://opensource.org/licenses/GPL-2.0")),
 
