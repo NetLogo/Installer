@@ -7,7 +7,7 @@ import java.nio.file.{ Files, Path }
 import java.util.UUID
 
 import sbt.{ Compile, InputKey, Runtime, Setting }
-import sbt.Keys.{ baseDirectory, dependencyClasspath, mainClass, packageBin, version }
+import sbt.Keys.{ baseDirectory, dependencyClasspath, javaOptions, mainClass, packageBin, version }
 import sbt.complete.{ DefaultParsers, Parser }, DefaultParsers._
 
 import scala.sys.process.Process
@@ -52,7 +52,7 @@ object Dist {
 
       run(Seq("jpackage", "--type", "app-image", "--app-version", appVersion, "--name", name,
               "--dest", output.toString, "--vendor", "CCL", "--input", input.toString, "--main-jar", jar.toString,
-              "--main-class", main))
+              "--main-class", main) ++ javaOptions.value.flatMap(Seq("--java-options", _)))
 
       platform match {
         case Platform("windows", arch) =>
