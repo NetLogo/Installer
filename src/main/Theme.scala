@@ -23,6 +23,9 @@ trait ColorTheme {
   def menuBackground: Color
   def menuBackgroundHover: Color
   def menuText: Color
+  def scrollBarBackground: Color
+  def scrollBarForeground: Color
+  def scrollBarForegroundHover: Color
 }
 
 object LightTheme extends ColorTheme {
@@ -44,6 +47,9 @@ object LightTheme extends ColorTheme {
   override def menuBackground: Color = new Color(255, 255, 255)
   override def menuBackgroundHover: Color = new Color(230, 230, 230)
   override def menuText: Color = new Color(50, 50, 50)
+  override def scrollBarBackground: Color = new Color(200, 200, 200)
+  override def scrollBarForeground: Color = new Color(150, 150, 150)
+  override def scrollBarForegroundHover: Color = new Color(125, 125, 125)
 }
 
 object DarkTheme extends ColorTheme {
@@ -65,6 +71,9 @@ object DarkTheme extends ColorTheme {
   override def menuBackground: Color = new Color(100, 100, 100)
   override def menuBackgroundHover: Color = new Color(75, 75, 75)
   override def menuText: Color = new Color(220, 220, 220)
+  override def scrollBarBackground: Color = new Color(75, 75, 75)
+  override def scrollBarForeground: Color = new Color(125, 125, 125)
+  override def scrollBarForegroundHover: Color = new Color(150, 150, 150)
 }
 
 object ThemeSync {

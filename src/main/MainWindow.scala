@@ -2,14 +2,14 @@
 
 package org.nlogo.installer
 
-import java.awt.{ Dimension, Image }
+import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.{ Files, Paths }
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
 import javax.imageio.ImageIO
-import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, JScrollPane, ScrollPaneConstants,
+import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, ScrollPaneConstants,
                      WindowConstants }
 import javax.swing.border.EmptyBorder
 
@@ -54,13 +54,8 @@ class MainWindow extends JFrame with ThemeSync {
     add(addCard)
   }
 
-  private val scrollPane = new JScrollPane(contents, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-                                           ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER) {
-    setBorder(null)
-
-    override def getMinimumSize: Dimension =
-      new Dimension(contents.getMinimumSize.width, contents.getMinimumSize.height)
-  }
+  private val scrollPane = new ScrollPane(contents, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                                          ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
 
   locally {
     setTitle("NetLogo Installer")
@@ -369,8 +364,7 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   override def syncTheme(theme: ColorTheme): Unit = {
-    scrollPane.setBackground(theme.windowBackground)
-    scrollPane.getViewport.setBackground(theme.windowBackground)
+    scrollPane.syncTheme(theme)
 
     titleLabel.setForeground(theme.windowText)
 
