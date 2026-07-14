@@ -3,3 +3,5 @@
 .vscode
 target
 defaults/**/build
+dist/input
+dist/output

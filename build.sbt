@@ -1,3 +1,7 @@
+// (C) Uri Wilensky. https://github.com/NetLogo/NetLogo
+
+import org.nlogo.installer.Dist
+
 lazy val root = project.in(file(".")).settings(
   name := "netlogo-installer",
   version := "0.1.0",
@@ -7,11 +11,10 @@ lazy val root = project.in(file(".")).settings(
   scalaVersion := "3.7.0",
 
   Compile / fork := true,
-
   Compile / scalaSource := baseDirectory.value / "src" / "main",
   Compile / mainClass := Some("org.nlogo.installer.Main"),
 
-  scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "us-ascii", "-release", "11",
+  scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "us-ascii", "-release", "21",
                         "-Xfatal-warnings", "-Wunused:linted"),
 
   javaOptions += "-Dapple.awt.application.appearance=system",
@@ -26,4 +29,4 @@ lazy val root = project.in(file(".")).settings(
     "org.apache.commons" % "commons-compress" % "1.28.0",
     "com.dynatrace.hash4j" % "hash4j" % "0.28.0"
   )
-)
+).settings(Dist.settings: _*)

@@ -26,7 +26,7 @@ class MainWindow extends JFrame with ThemeSync {
 
   private var availableVersions = Map[String, String]()
 
-  private val title = new JLabel("<html><b>Installed Versions</b></html>") {
+  private val titleLabel = new JLabel("<html><b>Installed Versions</b></html>") {
     setFont(getFont.deriveFont(24f))
   }
 
@@ -45,7 +45,7 @@ class MainWindow extends JFrame with ThemeSync {
     add(new JPanel with Transparent {
       setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
 
-      add(title)
+      add(titleLabel)
       add(Box.createHorizontalGlue)
     })
 
@@ -372,7 +372,7 @@ class MainWindow extends JFrame with ThemeSync {
     scrollPane.setBackground(theme.windowBackground)
     scrollPane.getViewport.setBackground(theme.windowBackground)
 
-    title.setForeground(theme.windowText)
+    titleLabel.setForeground(theme.windowText)
 
     cards.foreach(_.syncTheme(theme))
 

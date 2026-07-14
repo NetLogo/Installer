@@ -3,7 +3,7 @@
 package org.nlogo.installer
 
 import java.io.ByteArrayOutputStream
-import java.net.{ HttpURLConnection, URL }
+import java.net.{ HttpURLConnection, URI }
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.{ Duration, SECONDS }
@@ -32,7 +32,7 @@ object Request {
   }
 
   def file(path: String, body: Value, progress: ProgressTracker): FileResponse = {
-    val connection = new URL(base + path).openConnection.asInstanceOf[HttpURLConnection]
+    val connection = new URI(base + path).toURL.openConnection.asInstanceOf[HttpURLConnection]
 
     connection.setRequestMethod("POST")
     connection.setRequestProperty("Content-Type", "application/json")
