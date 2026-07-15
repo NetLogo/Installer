@@ -22,6 +22,7 @@ object Main {
 
     UIManager.put("Label.font", font)
     UIManager.put("Button.font", font)
+    UIManager.put("MenuItem.font", font)
 
     val themeDetector = OsThemeDetector.getDetector
 
