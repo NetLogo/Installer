@@ -24,11 +24,9 @@ object Defaults {
         case OS.Windows =>
           Process(Seq(path.toString, config.root.getAbsolutePath, config.version)).! == 0
 
-        case OS.Mac =>
-          Process(Seq(path.toString, config.exec.getAbsolutePath, config.execThreed.getAbsolutePath)).! == 0
-
-        case OS.Linux =>
-          false
+        case _ =>
+          Process(Seq(path.toString, config.exec.getAbsolutePath,
+                      config.execThreed.fold("")(_.getAbsolutePath))).! == 0
       }
     }
   }

@@ -350,10 +350,11 @@ class MainWindow extends JFrame with ThemeSync {
   private def verifyRoot(root: File): Option[AppConfig] = {
     if (root.getName.startsWith("NetLogo")) {
       val regex: String = s"(?i)^NetLogo( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}$$"
+      val regexThreed: String = s"(?i)^NetLogo 3D( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}$$"
 
       Utils.listFilesRecursive(root).find { f =>
         regex.r.matches(f.getName)
-      }.map { _ =>
+      }.map { exec =>
         val name: String = root.getName
         val version: String = name.stripPrefix("NetLogo ")
 
@@ -365,7 +366,9 @@ class MainWindow extends JFrame with ThemeSync {
           }
         }))
 
-        AppConfig(name, version, resizeImage(image), root)
+        val threed: Option[File] = Utils.listFilesRecursive(root).find(f => regexThreed.r.matches(f.getName))
+
+        AppConfig(name, version, resizeImage(image), root, exec, threed)
       }
     } else {
       None
