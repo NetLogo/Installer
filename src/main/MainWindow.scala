@@ -107,7 +107,7 @@ class MainWindow extends JFrame with ThemeSync {
 
         val optionPane = new ComboBoxOptionPane(
           this, "Select Version", "Select the version you would like to download.",
-          availableVersions.keys.toArray.sortBy(Utils.numericVersion), Array("Download", "Cancel")
+          availableVersions.keys.toArray.sortBy(Utils.numericVersion).reverse, Array("Download", "Cancel")
         )
 
         if (optionPane.getSelectedIndex == 0)
