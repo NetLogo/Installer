@@ -101,7 +101,9 @@ object Dist {
   }
 
   private def packageLinux(arch: String, version: String, dist: Path, config: Path, output: Path,
-                           name: String): Unit = {}
+                           name: String): Unit = {
+    run(Seq("tar", "czf", output.resolve(s"$name.tar.gz").toString, "-C", output.resolve(name).toString, "."))
+  }
 
   private def deleteRecursive(file: File): Unit = {
     if (file.isDirectory)
