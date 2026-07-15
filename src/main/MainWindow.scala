@@ -353,9 +353,9 @@ class MainWindow extends JFrame with ThemeSync {
       val versionExec: String = s"( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}"
 
       val regex: Regex = s"(?i)^NetLogo$versionExec$$".r
-      val regexThreed: Regex = s"(?i)^NetLogo 3D$versionExec$$".r
+      val regexThreed: Regex = s"(?i)^NetLogo ?3D$versionExec$$".r
       val regexBsearch: Regex = s"(?i)^BehaviorSearch$versionExec$$".r
-      val regexHubNet: Regex = s"(?i)^HubNet Client$versionExec$$".r
+      val regexHubNet: Regex = s"(?i)^HubNet ?Client$versionExec$$".r
 
       val files: Array[File] = Utils.listFilesRecursive(root)
 
