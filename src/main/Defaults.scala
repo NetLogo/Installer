@@ -25,8 +25,7 @@ object Defaults {
           Process(Seq(path.toString, config.root.getAbsolutePath, config.version)).! == 0
 
         case _ =>
-          Process(Seq(path.toString, config.exec.getAbsolutePath,
-                      config.execThreed.fold("")(_.getAbsolutePath))).! == 0
+          Process(Seq(path.toString, config.exec.getAbsolutePath, config.threed.fold("")(_.getAbsolutePath))).! == 0
       }
     }
   }

@@ -5,6 +5,7 @@ package org.nlogo.installer
 import com.dynatrace.hash4j.hashing.Hashing
 
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
+import java.io.File
 import java.nio.file.Files
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
@@ -12,7 +13,6 @@ import javax.swing.border.EmptyBorder
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 import scala.sys.process.Process
-import scala.util.Try
 
 import ujson.Obj
 
@@ -31,7 +31,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     setVisible(false)
   }
 
-  private val launchButton = new Button("Launch", () => launchApp())
+  private val launchButton = new Button("Launch", () => launchApp(config.exec))
   private val updateButton = new Button("Update", () => update())
 
   private val updatePanel = new JPanel with Transparent {
@@ -48,11 +48,17 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       this.getMinimumSize
   }
 
+  private val otherDropdown = new Dropdown("Other Apps", Array(
+    config.threed.map(app => new MenuItem("NetLogo 3D", () => launchApp(app))),
+    config.bsearch.map(app => new MenuItem("BehaviorSearch", () => launchApp(app))),
+    config.hubNet.map(app => new MenuItem("HubNet Client", () => launchApp(app))),
+  ).flatten)
+
   private val repairItem = new MenuItem("Repair", () => repair()) {
     setEnabled(false)
   }
 
-  private val dropdown = new Dropdown("More", Array(
+  private val manageDropdown = new Dropdown("Manage", Array(
     new MenuItem("Set as Default", () => mainWindow.setDefault(this)),
     repairItem,
     new MenuItem("Uninstall", () => uninstall())
@@ -75,8 +81,14 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   add(Box.createHorizontalGlue)
   add(launchButton)
   add(updatePanel)
+
+  if (otherDropdown.count > 0) {
+    add(Box.createHorizontalStrut(Utils.GapSize))
+    add(otherDropdown)
+  }
+
   add(Box.createHorizontalStrut(Utils.GapSize))
-  add(dropdown)
+  add(manageDropdown)
 
   initTheme()
 
@@ -97,27 +109,25 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     repairItem.setEnabled(reparable)
   }
 
-  private def launchApp(): Unit = {
-    val success = Try(Utils.os match {
-      case OS.Windows =>
-        // no matter how you try to launch the exe on Windows, it blocks until the application is closed,
-        // so we just have to start it in the background and hope it works. (Isaac B 9/5/25)
-        Process(Seq(config.exec.getAbsolutePath)).run()
+  private def launchApp(app: File): Unit = {
+    try {
+      Utils.os match {
+        case OS.Windows =>
+          // no matter how you try to launch the exe on Windows, it blocks until the application is closed,
+          // so we just have to start it in the background and hope it works. (Isaac B 9/5/25)
+          Process(Seq(app.getAbsolutePath)).run()
 
-        true
+        case OS.Mac =>
+          Process(Seq("open", app.getAbsolutePath)).!!
 
-      case OS.Mac =>
-        Process(Seq("open", config.exec.getAbsolutePath)).! == 0
-
-      case OS.Linux =>
-        // Linux behaves similarly to Windows, so we do the same thing here. (Isaac B 7/14/26)
-        Process(Seq(config.exec.getAbsolutePath)).run()
-
-        true
-    }).getOrElse(false)
-
-    if (!success)
-      new OptionPane(mainWindow, "Error", s"Unable to launch ${config.name}.", Array("OK"))
+        case OS.Linux =>
+          // Linux behaves similarly to Windows, so we do the same thing here. (Isaac B 7/14/26)
+          Process(Seq(app.getAbsolutePath)).run()
+      }
+    } catch {
+      case _ =>
+        new OptionPane(mainWindow, "Error", s"Unable to launch ${app.getName}.", Array("OK"))
+    }
   }
 
   private def update(): Unit = {
@@ -246,6 +256,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     launchButton.syncTheme(theme)
     updateButton.syncTheme(theme)
 
-    dropdown.syncTheme(theme)
+    manageDropdown.syncTheme(theme)
+    otherDropdown.syncTheme(theme)
   }
 }

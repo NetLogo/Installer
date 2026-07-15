@@ -16,6 +16,9 @@ class Dropdown(title: String, items: Array[MenuItem]) extends Button(title, new 
   setHorizontalTextPosition(SwingConstants.LEFT)
   setIconTextGap(Utils.GapSize)
   setAction(() => menu.show(this, 0, getHeight))
+
+  def count: Int =
+    items.size
 }
 
 class ComboBox(options: Array[String]) extends Button(options.head, new DropdownArrow) {

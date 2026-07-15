@@ -17,6 +17,7 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
+import scala.util.matching.Regex
 
 import ujson.Obj
 
@@ -349,12 +350,16 @@ class MainWindow extends JFrame with ThemeSync {
 
   private def verifyRoot(root: File): Option[AppConfig] = {
     if (root.getName.startsWith("NetLogo")) {
-      val regex: String = s"(?i)^NetLogo( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}$$"
-      val regexThreed: String = s"(?i)^NetLogo 3D( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}$$"
+      val versionExec: String = s"( [0-9\\.]+(-(beta|rc)\\d+)?)?${Utils.os.exec}"
 
-      Utils.listFilesRecursive(root).find { f =>
-        regex.r.matches(f.getName)
-      }.map { exec =>
+      val regex: Regex = s"(?i)^NetLogo$versionExec$$".r
+      val regexThreed: Regex = s"(?i)^NetLogo 3D$versionExec$$".r
+      val regexBsearch: Regex = s"(?i)^BehaviorSearch$versionExec$$".r
+      val regexHubNet: Regex = s"(?i)^HubNet Client$versionExec$$".r
+
+      val files: Array[File] = Utils.listFilesRecursive(root)
+
+      files.find(f => regex.matches(f.getName)).map { exec =>
         val name: String = root.getName
         val version: String = name.stripPrefix("NetLogo ")
 
@@ -366,9 +371,11 @@ class MainWindow extends JFrame with ThemeSync {
           }
         }))
 
-        val threed: Option[File] = Utils.listFilesRecursive(root).find(f => regexThreed.r.matches(f.getName))
+        val threed: Option[File] = files.find(f => regexThreed.matches(f.getName))
+        val bsearch: Option[File] = files.find(f => regexBsearch.matches(f.getName))
+        val hubNet: Option[File] = files.find(f => regexHubNet.matches(f.getName))
 
-        AppConfig(name, version, resizeImage(image), root, exec, threed)
+        AppConfig(name, version, resizeImage(image), root, exec, threed, bsearch, hubNet)
       }
     } else {
       None
