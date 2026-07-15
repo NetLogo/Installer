@@ -77,7 +77,7 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   def setDefault(default: AppCard): Unit = {
-    if (Defaults.setDefault(default.config)) {
+    if (Prefs.get("defaultVersion").contains(default.config.version) || Defaults.setDefault(default.config)) {
       Prefs.put("defaultVersion", default.config.version)
 
       cards.foreach(card => card.setDefault(card == default))
