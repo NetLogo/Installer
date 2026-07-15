@@ -359,8 +359,15 @@ class MainWindow extends JFrame with ThemeSync {
 
       val files: Array[File] = Utils.listFilesRecursive(root)
 
-      def findMatch(regex: Regex): Option[File] =
-        files.find(f => f.isFile && regex.matches(f.getName))
+      def findMatch(regex: Regex): Option[File] = {
+        Utils.os match {
+          case OS.Mac =>
+            files.find(f => regex.matches(f.getName))
+
+          case _ =>
+            files.find(f => f.isFile && regex.matches(f.getName))
+        }
+      }
 
       findMatch(regex).map { exec =>
         val name: String = root.getName
