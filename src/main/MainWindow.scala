@@ -359,7 +359,10 @@ class MainWindow extends JFrame with ThemeSync {
 
       val files: Array[File] = Utils.listFilesRecursive(root)
 
-      files.find(f => regex.matches(f.getName)).map { exec =>
+      def findMatch(regex: Regex): Option[File] =
+        files.find(f => f.isFile && regex.matches(f.getName))
+
+      findMatch(regex).map { exec =>
         val name: String = root.getName
         val version: String = name.stripPrefix("NetLogo ")
 
@@ -371,11 +374,8 @@ class MainWindow extends JFrame with ThemeSync {
           }
         }))
 
-        val threed: Option[File] = files.find(f => regexThreed.matches(f.getName))
-        val bsearch: Option[File] = files.find(f => regexBsearch.matches(f.getName))
-        val hubNet: Option[File] = files.find(f => regexHubNet.matches(f.getName))
-
-        AppConfig(name, version, resizeImage(image), root, exec, threed, bsearch, hubNet)
+        AppConfig(name, version, resizeImage(image), root, exec, findMatch(regexThreed), findMatch(regexBsearch),
+                  findMatch(regexHubNet))
       }
     } else {
       None
