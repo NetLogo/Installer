@@ -29,12 +29,12 @@ trait ColorTheme {
 }
 
 object LightTheme extends ColorTheme {
-  override def windowBackground: Color = Color.WHITE
+  override def windowBackground: Color = new Color(238, 238, 238)
   override def windowText: Color = new Color(50, 50, 50)
   override def cardBackground: Color = new Color(255, 255, 255)
   override def cardBackgroundHover: Color = new Color(235, 235, 235)
   override def cardBackgroundPressed: Color = new Color(210, 210, 210)
-  override def cardBorder: Color = new Color(100, 100, 100)
+  override def cardBorder: Color = new Color(150, 150, 150)
   override def cardBorderHighlight: Color = new Color(0, 0, 0)
   override def cardText: Color = new Color(50, 50, 50)
   override def buttonBackground: Color = new Color(255, 255, 255)
