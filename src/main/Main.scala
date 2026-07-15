@@ -6,6 +6,7 @@ import com.jthemedetecor.OsThemeDetector
 
 import java.awt.{ Font, GraphicsEnvironment, Window }
 import javax.swing.UIManager
+import javax.swing.border.LineBorder
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -50,5 +51,7 @@ object Main {
 
       case _ =>
     }
+
+    UIManager.put("PopupMenu.border", new LineBorder(theme.buttonBorder))
   }
 }
