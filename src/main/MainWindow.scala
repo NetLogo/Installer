@@ -17,7 +17,6 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
-import scala.util.Success
 
 import ujson.Obj
 
@@ -38,6 +37,20 @@ class MainWindow extends JFrame with ThemeSync {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
   }
 
+  private val scanLabel = new JLabel("Scanning...")
+
+  private val statusPanel = new JPanel with Transparent {
+    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
+
+    add(Box.createVerticalStrut(Utils.GapSize))
+    add(new JPanel with Transparent {
+      setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
+
+      add(scanLabel)
+      add(Box.createHorizontalGlue)
+    })
+  }
+
   private val contents = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
     setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -49,9 +62,7 @@ class MainWindow extends JFrame with ThemeSync {
       add(Box.createHorizontalGlue)
     })
 
-    add(cardPanel)
-    add(Box.createVerticalStrut(Utils.GapSize))
-    add(addCard)
+    add(statusPanel)
   }
 
   private val scrollPane = new ScrollPane(contents, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -70,8 +81,19 @@ class MainWindow extends JFrame with ThemeSync {
 
     setLocation(screenSize.width / 2 - getWidth / 2, screenSize.height / 2 - getHeight / 2)
 
-    getAvailableVersions()
-    findInstalled()
+    Future {
+      getAvailableVersions()
+      findInstalled()
+
+      statusPanel.removeAll()
+
+      statusPanel.add(cardPanel)
+      statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
+      statusPanel.add(addCard)
+
+      revalidate()
+      repaint()
+    }
 
     initTheme()
   }
@@ -354,12 +376,8 @@ class MainWindow extends JFrame with ThemeSync {
     Request.json("get_available_versions", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch
-    )) match {
-      case Success(json) =>
-        availableVersions = json.obj.map((key, value) => (key -> value.str)).toMap
-
-      case _ =>
-        new OptionPane(this, "Error", "Error retrieving release information from server.", Array("OK"))
+    )).foreach { json =>
+      availableVersions = json.obj.map((key, value) => (key -> value.str)).toMap
     }
   }
 
@@ -367,6 +385,7 @@ class MainWindow extends JFrame with ThemeSync {
     scrollPane.syncTheme(theme)
 
     titleLabel.setForeground(theme.windowText)
+    scanLabel.setForeground(theme.windowText)
 
     cards.foreach(_.syncTheme(theme))
 
