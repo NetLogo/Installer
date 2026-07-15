@@ -115,7 +115,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
         case OS.Windows =>
           // no matter how you try to launch the exe on Windows, it blocks until the application is closed,
           // so we just have to start it in the background and hope it works. (Isaac B 9/5/25)
-          Process(Seq(app.getAbsolutePath)).run()
+          Process(Seq(app.getAbsolutePath), config.root).run()
 
         case OS.Mac =>
           Process(Seq("open", "-n", app.getAbsolutePath)).!!
