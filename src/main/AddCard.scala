@@ -12,7 +12,7 @@ class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with Theme
   private var borderColor: Color = Color.WHITE
 
   addMouseListener(new MouseAdapter {
-    override def mouseClicked(e: MouseEvent): Unit = {
+    override def mouseReleased(e: MouseEvent): Unit = {
       mainWindow.addInstallation()
     }
   })
