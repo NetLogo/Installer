@@ -65,5 +65,12 @@ class Button(action: Action) extends JButton(action) with Transparent with Theme
     borderColor = theme.buttonBorder
 
     setForeground(theme.buttonText)
+
+    getIcon match {
+      case ts: ThemeSync =>
+        ts.syncTheme(theme)
+
+      case _ =>
+    }
   }
 }
