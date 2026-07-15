@@ -118,7 +118,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
           Process(Seq(app.getAbsolutePath)).run()
 
         case OS.Mac =>
-          Process(Seq("open", app.getAbsolutePath)).!!
+          Process(Seq("open", "-n", app.getAbsolutePath)).!!
 
         case OS.Linux =>
           // Linux behaves similarly to Windows, so we do the same thing here. (Isaac B 7/14/26)
