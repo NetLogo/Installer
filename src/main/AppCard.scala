@@ -10,9 +10,9 @@ import java.nio.file.Files
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.concurrent.duration.Duration
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.sys.process.Process
+import scala.util.Try
 
 import ujson.Obj
 
@@ -131,29 +131,36 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   }
 
   private def update(): Unit = {
-    verifyFiles("Update").flatMap(downloadUpdate("Update", _)).foreach { data =>
-      setUpdatable(!mainWindow.installUpdate("Update", "Installing updated files...", data, config.root))
+    verifyFiles("Update").flatMap(downloadUpdate("Update", _)).foreach { links =>
+      setUpdatable(!mainWindow.installUpdate("Update", "Installing updated files...", links, config.root.toPath))
     }
   }
 
   private def repair(): Unit = {
-    verifyFiles("Repair").flatMap(downloadUpdate("Repair", _)).foreach { data =>
-      mainWindow.installUpdate("Repair", "Installing repaired files...", data, config.root)
+    verifyFiles("Repair").flatMap(downloadUpdate("Repair", _)).foreach { links =>
+      mainWindow.installUpdate("Repair", "Installing repaired files...", links, config.root.toPath)
     }
   }
 
   private def verifyFiles(title: String): Option[Map[String, String]] = {
-    val files = Utils.listFilesRecursive(config.root).filterNot(_.isDirectory)
+    val files: Array[File] = Utils.listFilesRecursive(config.root).filterNot { file =>
+      file.isDirectory || file.getName == ".checksum"
+    }
 
     val total = files.foldLeft(0L)(_ + _.length)
     var processed = 0
 
-    var checksums = Map[String, String]()
+    var checksums = Try(Map(
+      ".checksum" -> Files.readString(config.root.toPath.resolve(".checksum")).trim
+    )).getOrElse(Map())
 
     val progress = new ProgressTracker
 
     Future {
       files.foreach { file =>
+        if (progress.abortRequested)
+          throw new InterruptedException
+
         val path = file.toPath
         val relativePath = config.root.toPath.relativize(path).toString.replace("\\", "/")
 
@@ -167,33 +174,32 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       }
 
       progress.setProgress(1.0)
-    }
+    }.recover(_ => progress.requestAbort())
 
-    if (new ProgressDialog(mainWindow, title, "Verifying files...", progress).isCompleted) {
-      Some(checksums)
-    } else {
-      None
+    new ProgressDialog(mainWindow, title, "Verifying files...", progress).getStatus match {
+      case ProgressStatus.Completed =>
+        Some(checksums)
+
+      case ProgressStatus.Canceled =>
+        progress.requestAbort()
+
+        None
+
+      case _ =>
+        new OptionPane(mainWindow, "Error", "Error verifying installation.", Array("OK"))
+
+        None
     }
   }
 
-  private def downloadUpdate(title: String, checksums: Map[String, String]): Option[Array[Byte]] = {
-    val progress = new ProgressTracker
-
-    val response: FileResponse = Request.file("get_updated_files", Obj(
+  private def downloadUpdate(title: String, checksums: Map[String, String]): Option[Map[String, String]] = {
+    Request.json("get_updated_files", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch,
       "version" -> config.version,
       "checksums" -> checksums
-    ), progress)
-
-    if (new ProgressDialog(mainWindow, title, "Downloading updated files...", progress).isCompleted) {
-      Option(Await.result(response.data, Duration.Inf)).filter(_.nonEmpty).orElse {
-        new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
-
-        None
-      }
-    } else {
-      response.connection.disconnect()
+    )).map(_.obj.map(_ -> _.str).toMap).toOption.orElse {
+      new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
 
       None
     }

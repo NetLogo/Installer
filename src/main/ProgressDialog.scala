@@ -27,6 +27,15 @@ class ProgressTracker {
   }
 }
 
+sealed abstract trait ProgressStatus
+
+object ProgressStatus {
+  case object InProgress extends ProgressStatus
+  case object Completed extends ProgressStatus
+  case object Canceled extends ProgressStatus
+  case object Aborted extends ProgressStatus
+}
+
 class ProgressDialog(parent: Frame, title: String, message: String, progress: ProgressTracker)
   extends JDialog(parent, title, true) with ThemeSync {
 
@@ -35,6 +44,8 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
   private val progressBar = new ProgressBar
 
   private val cancelButton = new Button("Cancel", () => setVisible(false))
+
+  private var status: ProgressStatus = ProgressStatus.InProgress
 
   add(new JPanel(new BorderLayout(Utils.GapSize, Utils.GapSize)) with Transparent {
     setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -63,7 +74,7 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
       while {
         progressBar.setValue(progress.getProgress)
 
-        !isCompleted
+        progress.getProgress < 1.0 && !progress.abortRequested
       } do {
         Thread.sleep(100)
       }
@@ -76,8 +87,22 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
 
   setVisible(true)
 
-  def isCompleted: Boolean =
-    progress.getProgress >= 1
+  def getStatus: ProgressStatus =
+    status
+
+  override def setVisible(visible: Boolean): Unit = {
+    if (!visible) {
+      if (progress.getProgress >= 1.0) {
+        status = ProgressStatus.Completed
+      } else if (progress.abortRequested) {
+        status = ProgressStatus.Aborted
+      } else {
+        status = ProgressStatus.Canceled
+      }
+    }
+
+    super.setVisible(visible)
+  }
 
   override def syncTheme(theme: ColorTheme): Unit = {
     getContentPane.setBackground(theme.windowBackground)

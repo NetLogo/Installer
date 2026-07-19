@@ -4,8 +4,9 @@ package org.nlogo.installer
 
 import java.awt.Image
 import java.awt.image.BufferedImage
-import java.io.File
-import java.nio.file.{ Files, Paths }
+import java.io.{ ByteArrayOutputStream, File, InputStream }
+import java.net.{ URI, URLConnection }
+import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
 import javax.imageio.ImageIO
@@ -15,8 +16,7 @@ import javax.swing.border.EmptyBorder
 
 import org.apache.commons.compress.archivers.zip.ZipFile
 
-import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.concurrent.duration.Duration
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.matching.Regex
 
 import ujson.Obj
@@ -173,54 +173,139 @@ class MainWindow extends JFrame with ThemeSync {
     if (cards.exists(_.config.version == version)) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      val root = Paths.get(Utils.appRoot, s"NetLogo $version").toFile
+      val root = Paths.get(Utils.appRoot, s"NetLogo $version")
 
-      downloadVersion(version).foreach { data =>
-        if (installUpdate("Install", s"Installing NetLogo $version...", data, root))
+      getVersionURL(version).flatMap(downloadVersion(version, _, root)).foreach { data =>
+        if (installVersion("Install", s"Installing NetLogo $version...", data, root))
           findInstalled()
       }
     }
   }
 
-  private def downloadVersion(version: String): Option[Array[Byte]] = {
-    val progress = new ProgressTracker
-
-    val response: FileResponse = Request.file("get_version", Obj(
+  private def getVersionURL(version: String): Option[String] = {
+    Request.json("get_version", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch,
       "version" -> version
-    ), progress)
-
-    if (new ProgressDialog(this, "Install", s"Downloading NetLogo $version...", progress).isCompleted) {
-      Option(Await.result(response.data, Duration.Inf)).filter(_.nonEmpty).orElse {
-        new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
-
-        None
-      }
-    } else {
-      response.connection.disconnect()
+    )).map(_.str).toOption.orElse {
+      new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
 
       None
     }
   }
 
-  def installUpdate(title: String, message: String, data: Array[Byte], dest: File): Boolean = {
+  private def downloadVersion(version: String, url: String, dest: Path): Option[Array[Byte]] = {
     val progress = new ProgressTracker
 
+    val output = new ByteArrayOutputStream
+
     Future {
-      updateFromZip(data, dest, progress)
-    }.recover(_ => Utils.deleteRecursive(dest))
+      val connection: URLConnection = new URI(url).toURL.openConnection
+      val input: InputStream = connection.getInputStream
+      val length: Int = connection.getContentLength
 
-    if (new ProgressDialog(this, title, message, progress).isCompleted) {
-      true
-    } else {
-      progress.requestAbort()
+      while (output.size < length) {
+        if (progress.abortRequested) {
+          input.close()
 
-      false
+          throw new InterruptedException
+        }
+
+        output.write(input.readNBytes(1024))
+
+        progress.setProgress(output.size.toDouble / length)
+      }
+
+      input.close()
+      output.close()
+
+      progress.setProgress(1.0)
+    }.recover(_ => progress.requestAbort())
+
+    new ProgressDialog(this, "Install", s"Downloading NetLogo $version...", progress).getStatus match {
+      case ProgressStatus.Completed =>
+        Option(output.toByteArray)
+
+      case ProgressStatus.Canceled =>
+        progress.requestAbort()
+
+        None
+
+      case _ =>
+        new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
+
+        None
     }
   }
 
-  private def updateFromZip(bytes: Array[Byte], dest: File, progress: ProgressTracker): Unit = {
+  def installVersion(title: String, message: String, data: Array[Byte], dest: Path): Boolean = {
+    val progress = new ProgressTracker
+
+    Future(updateFromZip(data, dest, progress)).recover { _ =>
+      progress.requestAbort()
+
+      Utils.deleteRecursive(dest.toFile)
+    }
+
+    new ProgressDialog(this, title, message, progress).getStatus match {
+      case ProgressStatus.Completed =>
+        true
+
+      case ProgressStatus.Canceled =>
+        progress.requestAbort()
+
+        false
+
+      case _ =>
+        new OptionPane(this, "Error", "Error installing files.", Array("OK"))
+
+        false
+    }
+  }
+
+  def installUpdate(title: String, message: String, links: Map[String, String], dest: Path): Boolean = {
+    if (links.isEmpty) {
+      new OptionPane(this, title, "Installation is already up to date.", Array("OK"))
+
+      return true
+    }
+
+    val progress = new ProgressTracker
+
+    Future {
+      links.foreach { (path, url) =>
+        if (progress.abortRequested)
+          throw new InterruptedException
+
+        val fullPath: Path = dest.resolve(path)
+        val stream: InputStream = new URI(url).toURL.openStream
+
+        Files.createDirectories(fullPath.getParent)
+        Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+
+        stream.close()
+      }
+
+      progress.setProgress(1.0)
+    }.recover(_ => progress.requestAbort())
+
+    new ProgressDialog(this, title, message, progress).getStatus match {
+      case ProgressStatus.Completed =>
+        true
+
+      case ProgressStatus.Canceled =>
+        progress.requestAbort()
+
+        false
+
+      case _ =>
+        new OptionPane(this, "Error", "Error downloading updated files from server.", Array("OK"))
+
+        false
+    }
+  }
+
+  private def updateFromZip(bytes: Array[Byte], dest: Path, progress: ProgressTracker): Unit = {
     val builder = new ZipFile.Builder
 
     builder.setByteArray(bytes)
@@ -238,7 +323,7 @@ class MainWindow extends JFrame with ThemeSync {
 
       if (!entry.isDirectory) {
         val relativePath = Paths.get(entry.getName)
-        val localPath = dest.toPath.resolve(relativePath)
+        val localPath = dest.resolve(relativePath)
 
         localPath.toFile.getParentFile.mkdirs()
 
@@ -394,7 +479,7 @@ class MainWindow extends JFrame with ThemeSync {
       "os" -> Utils.os.name,
       "arch" -> Utils.arch
     )).foreach { json =>
-      availableVersions = json.obj.map((key, value) => (key -> value.str)).toMap
+      availableVersions = json.obj.map(_ -> _.str).toMap
     }
   }
 
