@@ -199,7 +199,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     val updates = Promise[Seq[Update]]()
 
     Future {
-      Request.json("get_updated_files", Obj(
+      Request.json("update", Obj(
         "os" -> Utils.os.name,
         "arch" -> Utils.arch,
         "version" -> config.version,

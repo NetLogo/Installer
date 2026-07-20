@@ -183,7 +183,7 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   private def getVersionURL(version: String): Option[String] = {
-    Request.json("get_version", Obj(
+    Request.json("version", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch,
       "version" -> version
@@ -483,7 +483,7 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   private def getAvailableVersions(): Unit = {
-    Request.json("get_available_versions", Obj(
+    Request.json("versions", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch
     )).foreach { json =>
