@@ -12,9 +12,9 @@ import ujson.Value
 object Request {
   private val base = "http://localhost:5000/"
 
-  def json(path: String, body: Value): Try[Value] = {
+  def json(path: String, body: Value, timeout: Int = 5): Try[Value] = {
     Try(quickRequest.post(uri"$base$path").contentType("application/json").body(ujson.write(body))
-                    .readTimeout(Duration(5, SECONDS)).send(DefaultSyncBackend())).flatMap {
+                    .readTimeout(Duration(timeout, SECONDS)).send(DefaultSyncBackend())).flatMap {
       case response if response.isSuccess =>
         Try(ujson.read(response.body))
 
@@ -23,3 +23,5 @@ object Request {
     }
   }
 }
+
+case class Update(path: String, url: String, length: Long)

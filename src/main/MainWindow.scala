@@ -263,8 +263,8 @@ class MainWindow extends JFrame with ThemeSync {
     }
   }
 
-  def installUpdate(title: String, message: String, links: Map[String, String], dest: Path): Boolean = {
-    if (links.isEmpty) {
+  def installUpdate(title: String, message: String, updates: Seq[Update], dest: Path): Boolean = {
+    if (updates.isEmpty) {
       new OptionPane(this, title, "Installation is already up to date.", Array("OK"))
 
       return true
@@ -272,18 +272,26 @@ class MainWindow extends JFrame with ThemeSync {
 
     val progress = new ProgressTracker
 
+    val totalLength: Long = updates.map(_.length).sum + 1
+    var processed = 0L
+
     Future {
-      links.foreach { (path, url) =>
-        if (progress.abortRequested)
-          throw new InterruptedException
+      updates.foreach {
+        case Update(path, url, length) =>
+          if (progress.abortRequested)
+            throw new InterruptedException
 
-        val fullPath: Path = dest.resolve(path)
-        val stream: InputStream = new URI(url).toURL.openStream
+          val fullPath: Path = dest.resolve(path)
+          val stream: InputStream = new URI(url).toURL.openStream
 
-        Files.createDirectories(fullPath.getParent)
-        Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+          Files.createDirectories(fullPath.getParent)
+          Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
-        stream.close()
+          stream.close()
+
+          processed += length
+
+          progress.setProgress(processed.toDouble / totalLength)
       }
 
       progress.setProgress(1.0)
