@@ -455,15 +455,13 @@ class MainWindow extends JFrame with ThemeSync {
       val regexBsearch: Regex = s"(?i)^BehaviorSearch$versionExec$$".r
       val regexHubNet: Regex = s"(?i)^HubNet ?Client$versionExec$$".r
 
-      val files: Array[File] = Utils.listFilesRecursive(root)
-
       def findMatch(regex: Regex): Option[File] = {
         Utils.os match {
           case OS.Mac =>
-            files.find(f => regex.matches(f.getName))
+            Utils.findFile(root, f => regex.matches(f.getName))
 
           case _ =>
-            files.find(f => f.isFile && regex.matches(f.getName))
+            Utils.findFile(root, f => f.isFile && regex.matches(f.getName))
         }
       }
 

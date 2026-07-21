@@ -73,6 +73,9 @@ object Utils {
   def listFilesRecursive(file: File): Array[File] =
     Option(file.listFiles).getOrElse(Array[File]()).flatMap(file => file +: listFilesRecursive(file))
 
+  def findFile(file: File, pred: File => Boolean): Option[File] =
+    Option(file.listFiles).flatMap(files => files.find(pred).orElse(files.flatMap(findFile(_, pred)).headOption))
+
   def deleteRecursive(file: File): Boolean = {
     if (file.isDirectory) {
       file.listFiles.forall(deleteRecursive) && file.delete()
