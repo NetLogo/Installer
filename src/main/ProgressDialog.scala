@@ -92,10 +92,10 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
 
   override def setVisible(visible: Boolean): Unit = {
     if (!visible) {
-      if (progress.getProgress >= 1.0) {
-        status = ProgressStatus.Completed
-      } else if (progress.abortRequested) {
+      if (progress.abortRequested) {
         status = ProgressStatus.Aborted
+      } else if (progress.getProgress >= 1.0) {
+        status = ProgressStatus.Completed
       } else {
         status = ProgressStatus.Canceled
       }

@@ -284,19 +284,23 @@ class MainWindow extends JFrame with ThemeSync {
           if (progress.abortRequested)
             throw new InterruptedException
 
-          val fullPath: Path = dest.resolve(path)
-          val stream: InputStream = new URI(url).toURL.openStream
+          try {
+            val fullPath: Path = dest.resolve(path)
+            val stream: InputStream = new URI(url).toURL.openStream
 
-          Files.createDirectories(fullPath.getParent)
-          Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+            Files.createDirectories(fullPath.getParent)
+            Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
-          stream.close()
+            stream.close()
 
-          processed += length
+            processed += length
 
-          progress.setProgress(processed.toDouble / totalLength)
-        }.recover(_ => progress.requestAbort())
-    }.andThen(_ => progress.setProgress(1.0))
+            progress.setProgress(processed.toDouble / totalLength)
+          } catch {
+            case _ => progress.requestAbort()
+          }
+        }
+    }.foreach(_ => progress.setProgress(1.0))
 
     new ProgressDialog(this, title, message, progress).getStatus match {
       case ProgressStatus.Completed =>
