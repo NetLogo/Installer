@@ -312,7 +312,7 @@ class MainWindow extends JFrame with ThemeSync {
         false
 
       case _ =>
-        new OptionPane(this, "Error", "Error downloading updated files from server.", Array("OK"))
+        new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
 
         false
     }

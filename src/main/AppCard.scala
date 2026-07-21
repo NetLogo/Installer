@@ -133,13 +133,13 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
   private def update(): Unit = {
     verifyFiles("Update").flatMap(downloadUpdates("Update", _)).foreach { updates =>
-      setUpdatable(!mainWindow.installUpdate("Update", "Installing updated files...", updates, config.root.toPath))
+      setUpdatable(!mainWindow.installUpdate("Update", "Downloading updated files...", updates, config.root.toPath))
     }
   }
 
   private def repair(): Unit = {
     verifyFiles("Repair").flatMap(downloadUpdates("Repair", _)).foreach { updates =>
-      mainWindow.installUpdate("Repair", "Installing repaired files...", updates, config.root.toPath)
+      mainWindow.installUpdate("Repair", "Downloading repaired files...", updates, config.root.toPath)
     }
   }
 
@@ -209,7 +209,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       progress.setProgress(1.0)
     }.recover(_ => progress.setProgress(1.0))
 
-    new ProgressDialog(mainWindow, title, "Downloading updated files...", progress).getStatus match {
+    new ProgressDialog(mainWindow, title, "Requesting update from server...", progress).getStatus match {
       case ProgressStatus.Completed if updates.isCompleted =>
         Option(Await.result(updates.future, Duration.Inf))
 
@@ -217,7 +217,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
         None
 
       case _ =>
-        new OptionPane(mainWindow, "Error", "Error downloading updated files from server.", Array("OK"))
+        new OptionPane(mainWindow, "Error", "Error requesting update from server.", Array("OK"))
 
         None
     }
