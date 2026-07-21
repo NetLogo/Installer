@@ -9,6 +9,7 @@ import java.net.{ URI, URLConnection }
 import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
+import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, ScrollPaneConstants,
                      WindowConstants }
@@ -275,9 +276,11 @@ class MainWindow extends JFrame with ThemeSync {
     val totalLength: Long = updates.map(_.length).sum + 1
     var processed = 0L
 
-    Future {
-      updates.foreach {
-        case Update(path, url, length) =>
+    implicit val context: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(20))
+
+    Future.traverse(updates) {
+      case Update(path, url, length) =>
+        Future {
           if (progress.abortRequested)
             throw new InterruptedException
 
@@ -292,10 +295,8 @@ class MainWindow extends JFrame with ThemeSync {
           processed += length
 
           progress.setProgress(processed.toDouble / totalLength)
-      }
-
-      progress.setProgress(1.0)
-    }.recover(_ => progress.requestAbort())
+        }.recover(_ => progress.requestAbort())
+    }.andThen(_ => progress.setProgress(1.0))
 
     new ProgressDialog(this, title, message, progress).getStatus match {
       case ProgressStatus.Completed =>
