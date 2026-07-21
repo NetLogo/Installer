@@ -2,6 +2,7 @@
 
 package org.nlogo.installer
 
+import java.io.InputStream
 import java.nio.file.{ Files, Path, StandardOpenOption }
 
 import scala.sys.process.Process
@@ -24,8 +25,21 @@ object Defaults {
         case OS.Windows =>
           Process(Seq(path.toString, config.root.getAbsolutePath, config.version)).! == 0
 
-        case _ =>
+        case OS.Mac =>
           Process(Seq(path.toString, config.exec.getAbsolutePath, config.threed.fold("")(_.getAbsolutePath))).! == 0
+
+        case OS.Linux =>
+          val mime: Path = Files.createTempFile("netlogo-", ".xml")
+
+          path.toFile.deleteOnExit()
+
+          val stream: InputStream = getClass.getResourceAsStream(s"/defaults/linux/${Utils.arch}/mimetypes.xml")
+
+          Files.write(mime, stream.readAllBytes, StandardOpenOption.TRUNCATE_EXISTING)
+
+          stream.close()
+
+          Process(Seq(path.toString, config.version, mime.toString)).! == 0
       }
     }
   }

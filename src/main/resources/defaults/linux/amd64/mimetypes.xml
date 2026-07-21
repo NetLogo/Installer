@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/nlogo">
+    <comment>NetLogo Model</comment>
+    <glob pattern="*.nlogo" />
+  </mime-type>
+  <mime-type type="text/nlogox">
+    <comment>NetLogo Model</comment>
+    <glob pattern="*.nlogox" />
+  </mime-type>
+  <mime-type type="text/nlogo3d">
+    <comment>NetLogo Model</comment>
+    <glob pattern="*.nlogo3d" />
+  </mime-type>
+  <mime-type type="text/nlogox3d">
+    <comment>NetLogo Model</comment>
+    <glob pattern="*.nlogox3d" />
+  </mime-type>
+</mime-info>
