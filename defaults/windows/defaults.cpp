@@ -14,7 +14,7 @@ int setCommand(const std::string& ext, const std::string& desc, const std::strin
     CHECK(RegCreateKeyEx(HKEY_CLASSES_ROOT, subKey.c_str(), 0, nullptr, 0, KEY_READ | KEY_WRITE, nullptr, &key, nullptr));
     CHECK(RegSetValue(key, nullptr, REG_SZ, desc.c_str(), 0));
     CHECK(RegSetValue(key, "command", REG_SZ, cmd.c_str(), 0));
-    CHECK(RegDeleteKeyValue(key, "command", "command"));
+    RegDeleteKeyValue(key, "command", "command");
     CHECK(RegCloseKey(key));
 
     return 0;
