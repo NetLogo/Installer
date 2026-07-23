@@ -133,13 +133,20 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
   private def update(): Unit = {
     verifyFiles("Update").flatMap(downloadUpdates("Update", _)).foreach { updates =>
-      setUpdatable(!mainWindow.installUpdate("Update", "Downloading updated files...", updates, config.root.toPath))
+      if (mainWindow.installUpdate("Update", "Downloading updated files...", updates, config.root.toPath)) {
+        new OptionPane(mainWindow, "Update", "Update complete.", Array("OK"))
+
+        setUpdatable(false)
+      } else {
+        setUpdatable(true)
+      }
     }
   }
 
   private def repair(): Unit = {
     verifyFiles("Repair").flatMap(downloadUpdates("Repair", _)).foreach { updates =>
-      mainWindow.installUpdate("Repair", "Downloading repaired files...", updates, config.root.toPath)
+      if (mainWindow.installUpdate("Repair", "Downloading repaired files...", updates, config.root.toPath))
+        new OptionPane(mainWindow, "Repair", "Repair complete.", Array("OK"))
     }
   }
 

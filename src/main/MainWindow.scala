@@ -177,8 +177,13 @@ class MainWindow extends JFrame with ThemeSync {
       val root = Paths.get(Utils.appRoot, s"NetLogo $version")
 
       getVersionURL(version).flatMap(downloadVersion(version, _, root)).foreach { data =>
-        if (installVersion("Install", s"Installing NetLogo $version...", data, root))
-          findInstalled()
+        if (installVersion("Install", s"Installing NetLogo $version...", data, root)) {
+          Future {
+            findInstalled()
+          }
+
+          new OptionPane(this, "Install", "Installation complete.", Array("OK"))
+        }
       }
     }
   }
@@ -268,7 +273,7 @@ class MainWindow extends JFrame with ThemeSync {
     if (updates.isEmpty) {
       new OptionPane(this, title, "Installation is already up to date.", Array("OK"))
 
-      return true
+      return false
     }
 
     val progress = new ProgressTracker
