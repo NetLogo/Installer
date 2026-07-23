@@ -39,6 +39,9 @@ object Utils {
     }
   }
 
+  private val versionRegex = """(?i)^(\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+  private val oldVersionRegex = """(?i)^(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
 
@@ -47,10 +50,17 @@ object Utils {
     g2d
   }
 
-  def numericVersion(name: String): Int = {
-    val versionRegex = """(?i)^(\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
-    val oldVersionRegex = """(?i)^(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+  def standardizeVersion(version: String): String = {
+    version match {
+      case oldVersionRegex(major, minor, modifier) =>
+        s"$major.$minor.0${Option(modifier).fold("")(mod => s"-$mod")}"
 
+      case _ =>
+        version
+    }
+  }
+
+  def numericVersion(name: String): Int = {
     try {
       name match {
         case versionRegex(major, minor, patch, modifier) =>

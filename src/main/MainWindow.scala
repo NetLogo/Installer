@@ -467,7 +467,7 @@ class MainWindow extends JFrame with ThemeSync {
 
       findMatch(regex).map { exec =>
         val name: String = root.getName
-        val version: String = name.replaceAll("^NetLogo( |-)", "")
+        val version: String = Utils.standardizeVersion(name.replaceAll("^NetLogo( |-)", ""))
 
         val image: Image = ImageIO.read(getClass.getResource({
           if (Utils.numericVersion(version) > Utils.numericVersion("6.4.0")) {
