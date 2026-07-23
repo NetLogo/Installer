@@ -10,7 +10,7 @@ import sttp.client4.{ DefaultSyncBackend, quickRequest, UriContext }
 import ujson.Value
 
 object Request {
-  private val base = "http://localhost:5000/"
+  private val base = "https://releases.netlogo.org/"
 
   def json(path: String, body: Value, timeout: Int = 5): Try[Value] = {
     Try(quickRequest.post(uri"$base$path").contentType("application/json").body(ujson.write(body))
