@@ -41,7 +41,7 @@ object Install {
   }
 
   private def downloadVersion(frame: Frame, version: String, url: String, dest: Path): Option[Array[Byte]] = {
-    val progress = new ProgressTracker
+    val progress = new ProgressDialog(frame, "Install", s"Downloading NetLogo $version...")
 
     val output = new ByteArrayOutputStream
 
@@ -68,11 +68,11 @@ object Install {
       progress.setProgress(1.0)
     }.recover(_ => progress.requestAbort())
 
-    new ProgressDialog(frame, "Install", s"Downloading NetLogo $version...", progress).getStatus match {
-      case ProgressStatus.Completed =>
+    progress.trackProgress() match {
+      case ProgressResult.Completed =>
         Option(output.toByteArray)
 
-      case ProgressStatus.Canceled =>
+      case ProgressResult.Canceled =>
         progress.requestAbort()
 
         None
@@ -85,7 +85,7 @@ object Install {
   }
 
   def getUpdates(frame: Frame, title: String, version: String, checksums: Map[String, String]): Option[Seq[Update]] = {
-    val progress = new ProgressTracker
+    val progress = new ProgressDialog(frame, title, "Requesting update from server...")
 
     val updates = Promise[Seq[Update]]()
 
@@ -100,11 +100,11 @@ object Install {
       progress.setProgress(1.0)
     }.recover(_ => progress.setProgress(1.0))
 
-    new ProgressDialog(frame, title, "Requesting update from server...", progress).getStatus match {
-      case ProgressStatus.Completed if updates.isCompleted =>
+    progress.trackProgress() match {
+      case ProgressResult.Completed if updates.isCompleted =>
         Option(Await.result(updates.future, Duration.Inf))
 
-      case ProgressStatus.Canceled =>
+      case ProgressResult.Canceled =>
         None
 
       case _ =>
@@ -121,19 +121,21 @@ object Install {
   }
 
   def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path): Boolean = {
-    val progress = new ProgressTracker
+    val progress = new ProgressDialog(frame, title, message)
 
-    Future(updateFromZip(data, dest, progress)).recover { _ =>
+    Future(updateFromZip(data, dest, progress)).recover { ex =>
+      println(ex)
+
       progress.requestAbort()
 
       Utils.deleteRecursive(dest.toFile)
     }
 
-    new ProgressDialog(frame, title, message, progress).getStatus match {
-      case ProgressStatus.Completed =>
+    progress.trackProgress() match {
+      case ProgressResult.Completed =>
         true
 
-      case ProgressStatus.Canceled =>
+      case ProgressResult.Canceled =>
         progress.requestAbort()
 
         false
@@ -152,7 +154,7 @@ object Install {
       return false
     }
 
-    val progress = new ProgressTracker
+    val progress = new ProgressDialog(frame, title, message)
 
     val totalLength: Long = updates.map(_.length).sum + 1
     var processed = 0L
@@ -183,11 +185,11 @@ object Install {
         }
     }.foreach(_ => progress.setProgress(1.0))
 
-    new ProgressDialog(frame, title, message, progress).getStatus match {
-      case ProgressStatus.Completed =>
+    progress.trackProgress() match {
+      case ProgressResult.Completed =>
         true
 
-      case ProgressStatus.Canceled =>
+      case ProgressResult.Canceled =>
         progress.requestAbort()
 
         false
@@ -199,7 +201,7 @@ object Install {
     }
   }
 
-  private def updateFromZip(bytes: Array[Byte], dest: Path, progress: ProgressTracker): Unit = {
+  private def updateFromZip(bytes: Array[Byte], dest: Path, progress: ProgressDialog): Unit = {
     val builder = new ZipFile.Builder
 
     builder.setByteArray(bytes)
@@ -270,7 +272,7 @@ object Install {
       ".checksum" -> Files.readString(root.toPath.resolve(".checksum")).trim
     )).getOrElse(Map())
 
-    val progress = new ProgressTracker
+    val progress = new ProgressDialog(frame, title, "Verifying files...")
 
     Future {
       files.foreach { file =>
@@ -292,11 +294,11 @@ object Install {
       progress.setProgress(1.0)
     }.recover(_ => progress.requestAbort())
 
-    new ProgressDialog(frame, title, "Verifying files...", progress).getStatus match {
-      case ProgressStatus.Completed =>
+    progress.trackProgress() match {
+      case ProgressResult.Completed =>
         Some(checksums)
 
-      case ProgressStatus.Canceled =>
+      case ProgressResult.Canceled =>
         progress.requestAbort()
 
         None

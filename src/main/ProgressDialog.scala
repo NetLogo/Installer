@@ -6,38 +6,20 @@ import java.awt.{ BorderLayout, Color, Dimension, EventQueue, Frame, Graphics, L
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-class ProgressTracker {
-  private var progress = -1.0
-  private var abort = false
+import scala.concurrent.{ ExecutionContext, Future }
 
-  def setProgress(progress: Double): Unit = synchronized {
-    this.progress = progress
-  }
+sealed abstract trait ProgressResult
 
-  def getProgress: Double = synchronized {
-    this.progress
-  }
-
-  def requestAbort(): Unit = synchronized {
-    abort = true
-  }
-
-  def abortRequested: Boolean = synchronized {
-    abort
-  }
+object ProgressResult {
+  case object Completed extends ProgressResult
+  case object Canceled extends ProgressResult
+  case object Aborted extends ProgressResult
 }
 
-sealed abstract trait ProgressStatus
-
-object ProgressStatus {
-  case object InProgress extends ProgressStatus
-  case object Completed extends ProgressStatus
-  case object Canceled extends ProgressStatus
-  case object Aborted extends ProgressStatus
-}
-
-class ProgressDialog(parent: Frame, title: String, message: String, progress: ProgressTracker)
+class ProgressDialog(parent: Frame, title: String, message: String)
   extends JDialog(parent, title, true) with ThemeSync {
+
+  private implicit val ec: ExecutionContext = ExecutionContext.global
 
   private val label = new JLabel(message)
 
@@ -45,7 +27,8 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
 
   private val cancelButton = new Button("Cancel", () => setVisible(false))
 
-  private var status: ProgressStatus = ProgressStatus.InProgress
+  private var progress = -1.0
+  private var abort = false
 
   add(new JPanel(new BorderLayout(Utils.GapSize, Utils.GapSize)) with Transparent {
     setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
@@ -69,12 +52,28 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
   setResizable(false)
   setAlwaysOnTop(true)
 
-  new Thread {
-    override def run(): Unit = {
-      while {
-        progressBar.setValue(progress.getProgress)
+  def setProgress(progress: Double): Unit = synchronized {
+    this.progress = progress
+  }
 
-        progress.getProgress < 1.0 && !progress.abortRequested
+  def getProgress: Double = synchronized {
+    progress
+  }
+
+  def requestAbort(): Unit = synchronized {
+    abort = true
+  }
+
+  def abortRequested: Boolean = synchronized {
+    abort
+  }
+
+  def trackProgress(): ProgressResult = {
+    Future {
+      while {
+        progressBar.setValue(getProgress)
+
+        getProgress < 1.0 && !abortRequested
       } do {
         Thread.sleep(100)
       }
@@ -83,25 +82,16 @@ class ProgressDialog(parent: Frame, title: String, message: String, progress: Pr
         setVisible(false)
       })
     }
-  }.start()
 
-  setVisible(true)
+    setVisible(true)
 
-  def getStatus: ProgressStatus =
-    status
-
-  override def setVisible(visible: Boolean): Unit = {
-    if (!visible) {
-      if (progress.abortRequested) {
-        status = ProgressStatus.Aborted
-      } else if (progress.getProgress >= 1.0) {
-        status = ProgressStatus.Completed
-      } else {
-        status = ProgressStatus.Canceled
-      }
+    if (abort) {
+      ProgressResult.Aborted
+    } else if (getProgress >= 1.0) {
+      ProgressResult.Completed
+    } else {
+      ProgressResult.Canceled
     }
-
-    super.setVisible(visible)
   }
 
   override def syncTheme(theme: ColorTheme): Unit = {
