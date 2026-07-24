@@ -2,20 +2,14 @@
 
 package org.nlogo.installer
 
-import java.awt.Image
+import java.awt.{ EventQueue, Image }
 import java.awt.image.BufferedImage
-import java.io.{ ByteArrayOutputStream, File, InputStream }
-import java.net.{ URI, URLConnection }
-import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
-import java.nio.file.attribute.PosixFilePermission
-import java.util.HashSet
-import java.util.concurrent.Executors
+import java.io.File
+import java.nio.file.Files
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, ScrollPaneConstants,
                      WindowConstants }
 import javax.swing.border.EmptyBorder
-
-import org.apache.commons.compress.archivers.zip.ZipFile
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.matching.Regex
@@ -41,16 +35,18 @@ class MainWindow extends JFrame with ThemeSync {
 
   private val scanLabel = new JLabel("Scanning...")
 
+  private val scanPanel = new JPanel with Transparent {
+    setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
+
+    add(scanLabel)
+    add(Box.createHorizontalGlue)
+  }
+
   private val statusPanel = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
 
     add(Box.createVerticalStrut(Utils.GapSize))
-    add(new JPanel with Transparent {
-      setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
-
-      add(scanLabel)
-      add(Box.createHorizontalGlue)
-    })
+    add(scanPanel)
   }
 
   private val contents = new JPanel with Transparent {
@@ -86,15 +82,6 @@ class MainWindow extends JFrame with ThemeSync {
     Future {
       getAvailableVersions()
       findInstalled()
-
-      statusPanel.removeAll()
-
-      statusPanel.add(cardPanel)
-      statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
-      statusPanel.add(addCard)
-
-      revalidate()
-      repaint()
     }
 
     initTheme()
@@ -151,7 +138,9 @@ class MainWindow extends JFrame with ThemeSync {
             case Some(config) =>
               putExtraPaths(getExtraPaths :+ config.root)
 
-              findInstalled()
+              setCards(cards.map(_.config) :+ config)
+
+              refreshCardPanel()
 
             case _ =>
               new OptionPane(this, "Invalid", "The selected directory is not a valid NetLogo installation.",
@@ -174,221 +163,34 @@ class MainWindow extends JFrame with ThemeSync {
     if (cards.exists(_.config.version == version)) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      val root = Paths.get(Utils.appRoot, s"NetLogo $version")
+      Install.installVersion(this, version)
 
-      getVersionURL(version).flatMap(downloadVersion(version, _, root)).foreach { data =>
-        if (installVersion("Install", s"Installing NetLogo $version...", data, root)) {
-          Future {
-            findInstalled()
-          }
+      statusPanel.removeAll()
 
-          new OptionPane(this, "Install", "Installation complete.", Array("OK"))
-        }
+      statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
+      statusPanel.add(scanPanel)
+
+      revalidate()
+      repaint()
+
+      Future {
+        findInstalled()
       }
     }
-  }
-
-  private def getVersionURL(version: String): Option[String] = {
-    Request.json("version", Obj(
-      "os" -> Utils.os.name,
-      "arch" -> Utils.arch,
-      "version" -> version
-    )).map(_.str).toOption.orElse {
-      new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
-
-      None
-    }
-  }
-
-  private def downloadVersion(version: String, url: String, dest: Path): Option[Array[Byte]] = {
-    val progress = new ProgressTracker
-
-    val output = new ByteArrayOutputStream
-
-    Future {
-      val connection: URLConnection = new URI(url).toURL.openConnection
-      val input: InputStream = connection.getInputStream
-      val length: Int = connection.getContentLength
-
-      while (output.size < length) {
-        if (progress.abortRequested) {
-          input.close()
-
-          throw new InterruptedException
-        }
-
-        output.write(input.readNBytes(1024))
-
-        progress.setProgress(output.size.toDouble / length)
-      }
-
-      input.close()
-      output.close()
-
-      progress.setProgress(1.0)
-    }.recover(_ => progress.requestAbort())
-
-    new ProgressDialog(this, "Install", s"Downloading NetLogo $version...", progress).getStatus match {
-      case ProgressStatus.Completed =>
-        Option(output.toByteArray)
-
-      case ProgressStatus.Canceled =>
-        progress.requestAbort()
-
-        None
-
-      case _ =>
-        new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
-
-        None
-    }
-  }
-
-  def installVersion(title: String, message: String, data: Array[Byte], dest: Path): Boolean = {
-    val progress = new ProgressTracker
-
-    Future(updateFromZip(data, dest, progress)).recover { _ =>
-      progress.requestAbort()
-
-      Utils.deleteRecursive(dest.toFile)
-    }
-
-    new ProgressDialog(this, title, message, progress).getStatus match {
-      case ProgressStatus.Completed =>
-        true
-
-      case ProgressStatus.Canceled =>
-        progress.requestAbort()
-
-        false
-
-      case _ =>
-        new OptionPane(this, "Error", "Error installing files.", Array("OK"))
-
-        false
-    }
-  }
-
-  def installUpdate(title: String, message: String, updates: Seq[Update], dest: Path): Boolean = {
-    if (updates.isEmpty) {
-      new OptionPane(this, title, "Installation is already up to date.", Array("OK"))
-
-      return false
-    }
-
-    val progress = new ProgressTracker
-
-    val totalLength: Long = updates.map(_.length).sum + 1
-    var processed = 0L
-
-    implicit val context: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(20))
-
-    Future.traverse(updates) {
-      case Update(path, url, length) =>
-        Future {
-          if (progress.abortRequested)
-            throw new InterruptedException
-
-          try {
-            val fullPath: Path = dest.resolve(path)
-            val stream: InputStream = new URI(url).toURL.openStream
-
-            Files.createDirectories(fullPath.getParent)
-            Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-
-            stream.close()
-
-            processed += length
-
-            progress.setProgress(processed.toDouble / totalLength)
-          } catch {
-            case _ => progress.requestAbort()
-          }
-        }
-    }.foreach(_ => progress.setProgress(1.0))
-
-    new ProgressDialog(this, title, message, progress).getStatus match {
-      case ProgressStatus.Completed =>
-        true
-
-      case ProgressStatus.Canceled =>
-        progress.requestAbort()
-
-        false
-
-      case _ =>
-        new OptionPane(this, "Error", "Error downloading files from server.", Array("OK"))
-
-        false
-    }
-  }
-
-  private def updateFromZip(bytes: Array[Byte], dest: Path, progress: ProgressTracker): Unit = {
-    val builder = new ZipFile.Builder
-
-    builder.setByteArray(bytes)
-
-    val input = builder.get
-
-    var processed = 0L
-
-    input.stream.forEach { entry =>
-      if (progress.abortRequested) {
-        input.close()
-
-        throw new InterruptedException
-      }
-
-      if (!entry.isDirectory) {
-        val relativePath = Paths.get(entry.getName)
-        val localPath = dest.resolve(relativePath)
-
-        localPath.toFile.getParentFile.mkdirs()
-
-        val stream = input.getInputStream(entry)
-
-        Files.write(localPath, stream.readAllBytes())
-
-        stream.close()
-
-        if (Utils.os != OS.Windows) {
-          val mode = entry.getUnixMode
-
-          val perms = new HashSet[PosixFilePermission]()
-
-          if ((mode & 0400) != 0) perms.add(PosixFilePermission.OWNER_READ)
-          if ((mode & 0200) != 0) perms.add(PosixFilePermission.OWNER_WRITE)
-          if ((mode & 0100) != 0) perms.add(PosixFilePermission.OWNER_EXECUTE)
-
-          if ((mode & 0040) != 0) perms.add(PosixFilePermission.GROUP_READ)
-          if ((mode & 0020) != 0) perms.add(PosixFilePermission.GROUP_WRITE)
-          if ((mode & 0010) != 0) perms.add(PosixFilePermission.GROUP_EXECUTE)
-
-          if ((mode & 0004) != 0) perms.add(PosixFilePermission.OTHERS_READ)
-          if ((mode & 0002) != 0) perms.add(PosixFilePermission.OTHERS_WRITE)
-          if ((mode & 0001) != 0) perms.add(PosixFilePermission.OTHERS_EXECUTE)
-
-          Files.setPosixFilePermissions(localPath, perms)
-        }
-      }
-
-      processed += entry.getSize
-
-      progress.setProgress(processed.toDouble / bytes.size)
-    }
-
-    input.close()
-
-    progress.setProgress(1.0)
   }
 
   private def refreshCardPanel(): Unit = {
+    statusPanel.removeAll()
     cardPanel.removeAll()
 
     cards.foreach { card =>
       cardPanel.add(Box.createVerticalStrut(Utils.GapSize))
       cardPanel.add(card)
     }
+
+    statusPanel.add(cardPanel)
+    statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
+    statusPanel.add(addCard)
 
     revalidate()
     repaint()
@@ -426,29 +228,33 @@ class MainWindow extends JFrame with ThemeSync {
         Array[AppConfig]()
     }) ++ getExtraPaths.flatMap(verifyRoot)
 
-    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map { config =>
-      val card = new AppCard(config, this)
-
-      availableVersions.get(config.version) match {
-        case Some(expected) =>
-          val checksumPath = config.root.toPath.resolve(".checksum")
-
-          if (Files.exists(checksumPath))
-            card.setUpdatable(expected != Files.readString(checksumPath).trim)
-
-          card.setReparable(true)
-
-        case _ =>
-          card.setReparable(false)
-      }
-
-      card
-    }.toSeq
+    setCards(configs.toSeq)
 
     Prefs.get("defaultVersion").flatMap(version => cards.find(_.config.version == version))
       .orElse(cards.headOption).foreach(setDefault)
 
-    refreshCardPanel()
+    EventQueue.invokeLater(() => {
+      refreshCardPanel()
+    })
+  }
+
+  private def setCards(configs: Seq[AppConfig]): Unit = {
+    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map {
+      new AppCard(_, this) {
+        availableVersions.get(config.version) match {
+          case Some(expected) =>
+            val checksumPath = config.root.toPath.resolve(".checksum")
+
+            if (Files.exists(checksumPath))
+              setUpdatable(expected != Files.readString(checksumPath).trim)
+
+            setReparable(true)
+
+          case _ =>
+            setReparable(false)
+        }
+      }
+    }
   }
 
   private def verifyRoot(root: File): Option[AppConfig] = {

@@ -2,24 +2,14 @@
 
 package org.nlogo.installer
 
-import com.dynatrace.hash4j.hashing.Hashing
-
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
 import java.io.File
-import java.nio.file.Files
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-import scala.concurrent.{ Await, ExecutionContext, Future, Promise }
-import scala.concurrent.duration.Duration
 import scala.sys.process.Process
-import scala.util.Try
-
-import ujson.{ Obj, Value }
 
 class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
-  private implicit val ec: ExecutionContext = ExecutionContext.global
-
   private var backgroundColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
   private var borderHighlightColor: Color = Color.WHITE
@@ -132,8 +122,10 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   }
 
   private def update(): Unit = {
-    verifyFiles("Update").flatMap(downloadUpdates("Update", _)).foreach { updates =>
-      if (mainWindow.installUpdate("Update", "Downloading updated files...", updates, config.root.toPath)) {
+    Install.verifyFiles(mainWindow, "Update", config.root).flatMap {
+      Install.getUpdates(mainWindow, "Update", config.version, _)
+    }.foreach { updates =>
+      if (Install.updateFromFiles(mainWindow, "Update", "Downloading updated files...", updates, config.root.toPath)) {
         new OptionPane(mainWindow, "Update", "Update complete.", Array("OK"))
 
         setUpdatable(false)
@@ -144,96 +136,12 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   }
 
   private def repair(): Unit = {
-    verifyFiles("Repair").flatMap(downloadUpdates("Repair", _)).foreach { updates =>
-      if (mainWindow.installUpdate("Repair", "Downloading repaired files...", updates, config.root.toPath))
+    Install.verifyFiles(mainWindow, "Repair", config.root).flatMap {
+      Install.getUpdates(mainWindow, "Repair", config.version, _)
+    }.foreach { updates =>
+      if (Install.updateFromFiles(mainWindow, "Repair", "Downloading repaired files...", updates, config.root.toPath))
         new OptionPane(mainWindow, "Repair", "Repair complete.", Array("OK"))
     }
-  }
-
-  private def verifyFiles(title: String): Option[Map[String, String]] = {
-    val files: Array[File] = Utils.listFilesRecursive(config.root).filterNot { file =>
-      file.isDirectory || file.getName == ".checksum"
-    }
-
-    val total = files.foldLeft(0L)(_ + _.length)
-    var processed = 0
-
-    var checksums = Try(Map(
-      ".checksum" -> Files.readString(config.root.toPath.resolve(".checksum")).trim
-    )).getOrElse(Map())
-
-    val progress = new ProgressTracker
-
-    Future {
-      files.foreach { file =>
-        if (progress.abortRequested)
-          throw new InterruptedException
-
-        val path = file.toPath
-        val relativePath = config.root.toPath.relativize(path).toString.replace("\\", "/")
-
-        val bytes = Files.readAllBytes(path)
-
-        checksums = checksums + (relativePath -> Hashing.xxh3_64.hashBytesToLong(bytes).toString)
-
-        processed += bytes.size
-
-        progress.setProgress(processed.toDouble / total)
-      }
-
-      progress.setProgress(1.0)
-    }.recover(_ => progress.requestAbort())
-
-    new ProgressDialog(mainWindow, title, "Verifying files...", progress).getStatus match {
-      case ProgressStatus.Completed =>
-        Some(checksums)
-
-      case ProgressStatus.Canceled =>
-        progress.requestAbort()
-
-        None
-
-      case _ =>
-        new OptionPane(mainWindow, "Error", "Error verifying installation.", Array("OK"))
-
-        None
-    }
-  }
-
-  private def downloadUpdates(title: String, checksums: Map[String, String]): Option[Seq[Update]] = {
-    val progress = new ProgressTracker
-
-    val updates = Promise[Seq[Update]]()
-
-    Future {
-      Request.json("update", Obj(
-        "os" -> Utils.os.name,
-        "arch" -> Utils.arch,
-        "version" -> config.version,
-        "checksums" -> checksums
-      ), timeout = 30).map(_.arr.map(parseUpdate).toSeq).foreach(updates.success)
-
-      progress.setProgress(1.0)
-    }.recover(_ => progress.setProgress(1.0))
-
-    new ProgressDialog(mainWindow, title, "Requesting update from server...", progress).getStatus match {
-      case ProgressStatus.Completed if updates.isCompleted =>
-        Option(Await.result(updates.future, Duration.Inf))
-
-      case ProgressStatus.Canceled =>
-        None
-
-      case _ =>
-        new OptionPane(mainWindow, "Error", "Error requesting update from server.", Array("OK"))
-
-        None
-    }
-  }
-
-  private def parseUpdate(json: Value): Update = {
-    val obj: Obj = json.obj
-
-    Update(obj("path").str, obj("url").str, obj("length").num.toLong)
   }
 
   private def uninstall(): Unit = {
