@@ -17,7 +17,7 @@ object Defaults {
       path.toFile.setExecutable(true)
       path.toFile.deleteOnExit()
 
-      Files.write(path, stream.readAllBytes, StandardOpenOption.TRUNCATE_EXISTING)
+      Files.write(path, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
       stream.close()
 
@@ -35,7 +35,7 @@ object Defaults {
 
           val stream: InputStream = getClass.getResourceAsStream(s"/defaults/linux/${Utils.arch}/mimetypes.xml")
 
-          Files.write(mime, stream.readAllBytes, StandardOpenOption.TRUNCATE_EXISTING)
+          Files.write(mime, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
           stream.close()
 

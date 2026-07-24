@@ -218,12 +218,10 @@ object Install {
       if (!entry.isDirectory) {
         val relativePath = Paths.get(entry.getName)
         val localPath = dest.resolve(relativePath)
-
-        localPath.toFile.getParentFile.mkdirs()
-
         val stream = input.getInputStream(entry)
 
-        Files.write(localPath, stream.readAllBytes())
+        Files.createDirectories(localPath.getParent)
+        Files.write(localPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
         stream.close()
 
