@@ -123,9 +123,7 @@ object Install {
   def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path): Boolean = {
     val progress = new ProgressDialog(frame, title, message)
 
-    Future(updateFromZip(data, dest, progress)).recover { ex =>
-      println(ex)
-
+    Future(updateFromZip(data, dest, progress)).recover { _ =>
       progress.requestAbort()
 
       Utils.deleteRecursive(dest.toFile)

@@ -6,8 +6,6 @@ import java.awt.{ BorderLayout, Color, Dimension, EventQueue, Frame, Graphics, L
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 import javax.swing.border.EmptyBorder
 
-import scala.concurrent.{ ExecutionContext, Future }
-
 sealed abstract trait ProgressResult
 
 object ProgressResult {
@@ -18,8 +16,6 @@ object ProgressResult {
 
 class ProgressDialog(parent: Frame, title: String, message: String)
   extends JDialog(parent, title, true) with ThemeSync {
-
-  private implicit val ec: ExecutionContext = ExecutionContext.global
 
   private val label = new JLabel(message)
 
@@ -54,14 +50,22 @@ class ProgressDialog(parent: Frame, title: String, message: String)
 
   def setProgress(progress: Double): Unit = synchronized {
     this.progress = progress
-  }
 
-  def getProgress: Double = synchronized {
-    progress
+    progressBar.setValue(progress)
+
+    if (progress >= 1.0) {
+      EventQueue.invokeLater(() => {
+        setVisible(false)
+      })
+    }
   }
 
   def requestAbort(): Unit = synchronized {
     abort = true
+
+    EventQueue.invokeLater(() => {
+      setVisible(false)
+    })
   }
 
   def abortRequested: Boolean = synchronized {
@@ -69,25 +73,11 @@ class ProgressDialog(parent: Frame, title: String, message: String)
   }
 
   def trackProgress(): ProgressResult = {
-    Future {
-      while {
-        progressBar.setValue(getProgress)
-
-        getProgress < 1.0 && !abortRequested
-      } do {
-        Thread.sleep(100)
-      }
-
-      EventQueue.invokeLater(() => {
-        setVisible(false)
-      })
-    }
-
     setVisible(true)
 
     if (abort) {
       ProgressResult.Aborted
-    } else if (getProgress >= 1.0) {
+    } else if (progress >= 1.0) {
       ProgressResult.Completed
     } else {
       ProgressResult.Canceled
