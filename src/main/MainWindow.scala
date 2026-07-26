@@ -152,6 +152,12 @@ class MainWindow extends JFrame with ThemeSync {
     }
   }
 
+  def refreshInstallation(root: File): Unit = {
+    setCards(cards.map(_.config).filter(_.root != root) ++ verifyRoot(root))
+
+    refreshCardPanel()
+  }
+
   private def getExtraPaths: Array[File] =
     Prefs.get("extraPaths").fold(Array[File]())(_.split("\n").map(new File(_)))
 
@@ -230,9 +236,6 @@ class MainWindow extends JFrame with ThemeSync {
 
     setCards(configs.toSeq)
 
-    Prefs.get("defaultVersion").flatMap(version => cards.find(_.config.version == version))
-      .orElse(cards.headOption).foreach(setDefault)
-
     EventQueue.invokeLater(() => {
       refreshCardPanel()
     })
@@ -255,6 +258,9 @@ class MainWindow extends JFrame with ThemeSync {
         }
       }
     }
+
+    Prefs.get("defaultVersion").flatMap(version => cards.find(_.config.version == version))
+      .orElse(cards.headOption).foreach(setDefault)
   }
 
   private def verifyRoot(root: File): Option[AppConfig] = {

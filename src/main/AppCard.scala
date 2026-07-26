@@ -126,9 +126,11 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       Install.getUpdates(mainWindow, "Update", config.version, _)
     }.foreach { updates =>
       if (Install.updateFromFiles(mainWindow, "Update", "Downloading updated files...", updates, config.root.toPath)) {
-        new OptionPane(mainWindow, "Update", "Update complete.", Array("OK"))
-
         setUpdatable(false)
+
+        mainWindow.refreshInstallation(config.root)
+
+        new OptionPane(mainWindow, "Update", "Update complete.", Array("OK"))
       } else {
         setUpdatable(true)
       }
@@ -139,8 +141,11 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     Install.verifyFiles(mainWindow, "Repair", config.root).flatMap {
       Install.getUpdates(mainWindow, "Repair", config.version, _)
     }.foreach { updates =>
-      if (Install.updateFromFiles(mainWindow, "Repair", "Downloading repaired files...", updates, config.root.toPath))
+      if (Install.updateFromFiles(mainWindow, "Repair", "Downloading repaired files...", updates, config.root.toPath)) {
+        mainWindow.refreshInstallation(config.root)
+
         new OptionPane(mainWindow, "Repair", "Repair complete.", Array("OK"))
+      }
     }
   }
 
