@@ -5,7 +5,7 @@ package org.nlogo.installer
 import java.awt.{ EventQueue, Image }
 import java.awt.image.BufferedImage
 import java.io.File
-import java.nio.file.Files
+import java.nio.file.{ Files, Path, Paths }
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, ScrollPaneConstants,
                      WindowConstants }
@@ -169,19 +169,11 @@ class MainWindow extends JFrame with ThemeSync {
     if (cards.exists(_.config.version == version)) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      Install.installVersion(this, version)
+      val root: Path = Paths.get(Utils.appRoot, s"NetLogo $version")
 
-      statusPanel.removeAll()
+      Install.installVersion(this, version, root)
 
-      statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
-      statusPanel.add(scanPanel)
-
-      revalidate()
-      repaint()
-
-      Future {
-        findInstalled()
-      }
+      refreshInstallation(root.toFile)
     }
   }
 

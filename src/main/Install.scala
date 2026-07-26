@@ -23,9 +23,7 @@ import ujson.{ Obj, Value }
 object Install {
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
-  def installVersion(frame: Frame, version: String): Unit = {
-    val root = Paths.get(Utils.appRoot, s"NetLogo $version")
-
+  def installVersion(frame: Frame, version: String, root: Path): Unit = {
     Request.json("version", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch,
