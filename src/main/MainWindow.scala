@@ -116,9 +116,13 @@ class MainWindow extends JFrame with ThemeSync {
           return
         }
 
+        val versions: Array[String] = availableVersions.keys.toArray.filterNot { version =>
+          cards.exists(_.config.version == version)
+        }.sortBy(Utils.numericVersion).reverse
+
         val optionPane = new ComboBoxOptionPane(
-          this, "Select Version", "Select the version you would like to download.",
-          availableVersions.keys.toArray.sortBy(Utils.numericVersion).reverse, Array("Download", "Cancel")
+          this, "Select Version", "Select the version you would like to download.", versions,
+          Array("Download", "Cancel")
         )
 
         if (optionPane.getSelectedIndex == 0)
