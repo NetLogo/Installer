@@ -117,7 +117,7 @@ object Install {
   private def parseUpdate(json: Value): Update = {
     val obj: Obj = json.obj
 
-    Update(obj("path").str, obj("url").str, obj("length").num.toLong)
+    Update(obj("path").str, obj("url").str, obj("length").num.toLong, obj("exec").bool)
   }
 
   def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path): Boolean = {
@@ -160,7 +160,7 @@ object Install {
     implicit val context: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(20))
 
     Future.traverse(updates) {
-      case Update(path, url, length) =>
+      case Update(path, url, length, exec) =>
         Future {
           if (progress.abortRequested)
             throw new InterruptedException
@@ -173,6 +173,14 @@ object Install {
             Files.write(fullPath, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
             stream.close()
+
+            if (exec && Utils.os != OS.Windows) {
+              Files.setPosixFilePermissions(fullPath, new HashSet[PosixFilePermission] {
+                add(PosixFilePermission.OWNER_READ)
+                add(PosixFilePermission.OWNER_WRITE)
+                add(PosixFilePermission.OWNER_EXECUTE)
+              })
+            }
 
             processed += length
 

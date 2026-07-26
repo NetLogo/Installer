@@ -24,4 +24,4 @@ object Request {
   }
 }
 
-case class Update(path: String, url: String, length: Long)
+case class Update(path: String, url: String, length: Long, executable: Boolean)
