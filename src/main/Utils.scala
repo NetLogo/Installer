@@ -5,6 +5,7 @@ package org.nlogo.installer
 import java.awt.{ Color, Cursor, Graphics, Graphics2D, RenderingHints, Window }
 import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
+import java.nio.file.{ Files, Path, StandardOpenOption }
 import javax.swing.JComponent
 
 object Utils {
@@ -35,7 +36,7 @@ object Utils {
         "/Applications"
 
       case OS.Linux =>
-        ""
+        System.getProperty("user.home")
     }
   }
 
@@ -91,6 +92,21 @@ object Utils {
       file.listFiles.forall(deleteRecursive) && file.delete()
     } else {
       file.delete()
+    }
+  }
+
+  def loadExecutable(path: String): Option[Path] = {
+    Option(getClass.getResourceAsStream(path)).map { stream =>
+      val dest: Path = Files.createTempFile(null, Utils.os.bin)
+
+      dest.toFile.setExecutable(true)
+      dest.toFile.deleteOnExit()
+
+      Files.write(dest, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+
+      stream.close()
+
+      dest
     }
   }
 }

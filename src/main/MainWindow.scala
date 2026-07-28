@@ -173,7 +173,13 @@ class MainWindow extends JFrame with ThemeSync {
     if (cards.exists(_.config.version == version)) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      val root: Path = Paths.get(Utils.appRoot, s"NetLogo $version")
+      val root: Path = {
+        if (Utils.os == OS.Linux) {
+          Paths.get(Utils.appRoot, s"NetLogo-$version")
+        } else {
+          Paths.get(Utils.appRoot, s"NetLogo $version")
+        }
+      }
 
       Install.installVersion(this, version, root)
 
@@ -227,7 +233,7 @@ class MainWindow extends JFrame with ThemeSync {
         }.flatMap(verifyRoot)
 
       case _ =>
-        Array[AppConfig]()
+        new File(Utils.appRoot).listFiles.flatMap(verifyRoot)
     }) ++ getExtraPaths.flatMap(verifyRoot)
 
     setCards(configs.toSeq)

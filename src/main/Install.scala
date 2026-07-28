@@ -16,6 +16,7 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 
 import scala.concurrent.{ Await, ExecutionContext, Future, Promise }
 import scala.concurrent.duration.Duration
+import scala.sys.process.Process
 import scala.util.Try
 
 import ujson.{ Obj, Value }
@@ -33,7 +34,7 @@ object Install {
 
       None
     }.flatMap(downloadVersion(frame, version, _, root)).foreach { data =>
-      if (installFull(frame, "Install", s"Installing NetLogo $version...", data, root))
+      if (installFull(frame, "Install", s"Installing NetLogo $version...", data, root, version))
         new OptionPane(frame, "Install", "Installation complete.", Array("OK"))
     }
   }
@@ -118,7 +119,9 @@ object Install {
     Update(obj("path").str, obj("url").str, obj("length").num.toLong, obj("exec").bool)
   }
 
-  def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path): Boolean = {
+  def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path,
+                  version: String): Boolean = {
+
     val progress = new ProgressDialog(frame, title, message)
 
     Future(updateFromZip(data, dest, progress)).recover { _ =>
@@ -129,7 +132,13 @@ object Install {
 
     progress.trackProgress() match {
       case ProgressResult.Completed =>
-        true
+        if (Utils.os == OS.Linux) {
+          Utils.loadExecutable("/install/linux/install.sh").fold(false) { helper =>
+            Process(Seq("pkexec", "sh", helper.toString, dest.toString, version)).! == 0
+          }
+        } else {
+          true
+        }
 
       case ProgressResult.Canceled =>
         progress.requestAbort()

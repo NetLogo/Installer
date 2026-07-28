@@ -11,16 +11,7 @@ object Defaults {
   def setDefault(config: AppConfig): Boolean = {
     val platformPath: String = s"/defaults/${Utils.os.name}/${Utils.arch}/defaults${Utils.os.bin}"
 
-    Option(getClass.getResourceAsStream(platformPath)).fold(false) { stream =>
-      val path: Path = Files.createTempFile(null, Utils.os.bin)
-
-      path.toFile.setExecutable(true)
-      path.toFile.deleteOnExit()
-
-      Files.write(path, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-
-      stream.close()
-
+    Utils.loadExecutable(platformPath).fold(false) { path =>
       Utils.os match {
         case OS.Windows =>
           Process(Seq(path.toString, config.root.getAbsolutePath, config.version)).! == 0
