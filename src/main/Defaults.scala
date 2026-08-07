@@ -11,7 +11,7 @@ object Defaults {
   def setDefault(config: AppConfig): Boolean = {
     val platformPath: String = s"/defaults/${Utils.os.name}/${Utils.arch}/defaults${Utils.os.bin}"
 
-    Utils.loadExecutable(platformPath).fold(false) { path =>
+    Utils.loadExecutable(platformPath, Utils.os.bin).fold(false) { path =>
       Utils.os match {
         case OS.Windows =>
           Process(Seq(path.toString, config.root.getAbsolutePath, config.version)).! == 0

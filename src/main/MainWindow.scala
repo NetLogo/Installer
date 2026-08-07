@@ -82,6 +82,7 @@ class MainWindow extends JFrame with ThemeSync {
     Future {
       getAvailableVersions()
       findInstalled()
+      checkForUpdate()
     }
 
     initTheme()
@@ -312,6 +313,29 @@ class MainWindow extends JFrame with ThemeSync {
       availableVersions = json.obj.map(_ -> _.str).toMap
     }
   }
+
+  private def checkForUpdate(): Unit = {
+    Request.json("installer", Obj(
+      "os" -> Utils.os.name,
+      "arch" -> Utils.arch
+    )).map(_.obj).foreach { obj =>
+      val version: String = obj("version").str
+      val url: String = obj("url").str
+
+      if (Utils.numericVersion(version) > Utils.numericVersion(System.getProperty("installer.version"))) {
+        EventQueue.invokeLater(() => {
+          val message: String = centerText("""|An update is available for the installer application.<br>
+                                              |Would you like to update now?""".stripMargin)
+
+          if (new OptionPane(this, "Update Available", message, Array("Update", "Later")).getSelectedIndex == 0)
+            Install.updateInstaller(this, url)
+        })
+      }
+    }
+  }
+
+  private def centerText(text: String): String =
+    s"<html><body style=\"text-align: center\">$text</body></html>"
 
   override def syncTheme(theme: ColorTheme): Unit = {
     scrollPane.syncTheme(theme)

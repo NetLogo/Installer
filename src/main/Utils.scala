@@ -95,9 +95,9 @@ object Utils {
     }
   }
 
-  def loadExecutable(path: String): Option[Path] = {
+  def loadExecutable(path: String, ext: String): Option[Path] = {
     Option(getClass.getResourceAsStream(path)).map { stream =>
-      val dest: Path = Files.createTempFile(null, Utils.os.bin)
+      val dest: Path = Files.createTempFile(null, ext)
 
       dest.toFile.setExecutable(true)
       dest.toFile.deleteOnExit()

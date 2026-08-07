@@ -33,14 +33,14 @@ object Install {
       new OptionPane(frame, "Error", "Error downloading files from server.", Array("OK"))
 
       None
-    }.flatMap(downloadVersion(frame, version, _, root)).foreach { data =>
+    }.flatMap(downloadVersion(frame, _, "Install", s"Downloading NetLogo $version...")).foreach { data =>
       if (installFull(frame, "Install", s"Installing NetLogo $version...", data, root, version))
         new OptionPane(frame, "Install", "Installation complete.", Array("OK"))
     }
   }
 
-  private def downloadVersion(frame: Frame, version: String, url: String, dest: Path): Option[Array[Byte]] = {
-    val progress = new ProgressDialog(frame, "Install", s"Downloading NetLogo $version...")
+  private def downloadVersion(frame: Frame, url: String, title: String, message: String): Option[Array[Byte]] = {
+    val progress = new ProgressDialog(frame, title, message)
 
     val output = new ByteArrayOutputStream
 
@@ -133,7 +133,7 @@ object Install {
     progress.trackProgress() match {
       case ProgressResult.Completed =>
         if (Utils.os == OS.Linux) {
-          Utils.loadExecutable("/install/linux/install.sh").fold(false) { helper =>
+          Utils.loadExecutable("/install/linux/install.sh", ".sh").fold(false) { helper =>
             Process(Seq("pkexec", "sh", helper.toString, dest.toString, version)).! == 0
           }
         } else {
@@ -316,6 +316,56 @@ object Install {
 
       case _ =>
         new OptionPane(frame, "Error", "Error verifying installation.", Array("OK"))
+
+        None
+    }
+  }
+
+  def updateInstaller(frame: Frame, url: String): Unit = {
+    downloadVersion(frame, url, "Update", "Downloading latest version...").flatMap(unzipInstaller(frame, _))
+      .foreach { path =>
+
+      val ext: String = {
+        if (Utils.os == OS.Windows) {
+          ".bat"
+        } else {
+          ".sh"
+        }
+      }
+
+      Utils.loadExecutable(s"/update/${Utils.os.name}/update$ext", ext) match {
+        case Some(exec) =>
+          if (Process(Seq(exec.toString, ProcessHandle.current.pid.toString, path.toString)).! != 0)
+            new OptionPane(frame, "Error", "Update failed. Please try again later.", Array("OK"))
+
+        case _ =>
+          new OptionPane(frame, "Error", "Update failed. Please try again later.", Array("OK"))
+      }
+    }
+  }
+
+  def unzipInstaller(frame: Frame, data: Array[Byte]): Option[Path] = {
+    val path: Path = Files.createTempDirectory(null)
+
+    val progress = new ProgressDialog(frame, "Update", "Installing latest version...")
+
+    Future(updateFromZip(data, path, progress)).recover { _ =>
+      progress.requestAbort()
+
+      Utils.deleteRecursive(path.toFile)
+    }
+
+    progress.trackProgress() match {
+      case ProgressResult.Completed =>
+        Option(path)
+
+      case ProgressResult.Canceled =>
+        progress.requestAbort()
+
+        None
+
+      case _ =>
+        new OptionPane(frame, "Error", "Error installing latest version.", Array("OK"))
 
         None
     }

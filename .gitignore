@@ -3,5 +3,6 @@
 .vscode
 target
 defaults/**/build
+update/**/build
 dist/input
 dist/output

@@ -17,7 +17,10 @@ lazy val root = project.in(file(".")).settings(
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "us-ascii", "-release", "21",
                         "-Xfatal-warnings", "-Wunused:linted"),
 
-  javaOptions += "-Dapple.awt.application.appearance=system",
+  javaOptions ++= Seq(
+    "-Dapple.awt.application.appearance=system",
+    s"-Dinstaller.version=${version.value}"
+  ),
 
   resolvers += "jitpack" at "https://jitpack.io",
 
