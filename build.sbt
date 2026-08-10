@@ -20,6 +20,7 @@ lazy val root = project.in(file(".")).settings(
   javaOptions ++= Seq(
     "-Dapple.awt.application.appearance=system",
     "-Dapple.laf.useScreenMenuBar=true",
+    "-Xdock:name=NetLogo Installer",
     s"-Dinstaller.version=${version.value}"
   ),
 
