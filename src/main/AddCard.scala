@@ -32,15 +32,16 @@ class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with Theme
 
     val stroke = g2d.getStroke
 
-    g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 0, Array(Utils.GapSize / 2f),
-                                  Utils.GapSize / 2f))
+    g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, Array(Utils.GapSize / 2f),
+                                  Utils.zoomFloat(Utils.GapSize / 2f)))
     g2d.setColor(borderColor)
     g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.zoom(Utils.CornerDiameter),
                       Utils.zoom(Utils.CornerDiameter))
-    g2d.setStroke(stroke)
+    g2d.setStroke(new BasicStroke(Utils.zoomFloat(1), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND))
 
     g2d.drawLine(getWidth / 2 - getHeight / 8, getHeight / 2, getWidth / 2 + getHeight / 8, getHeight / 2)
     g2d.drawLine(getWidth / 2, getHeight / 2 - getHeight / 8, getWidth / 2, getHeight / 2 + getHeight / 8)
+    g2d.setStroke(stroke)
 
     super.paintComponent(g)
   }

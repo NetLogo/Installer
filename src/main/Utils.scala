@@ -58,6 +58,9 @@ object Utils {
   def zoom(value: Int): Int =
     (value * zoomLevel).toInt
 
+  def zoomFloat(value: Float): Float =
+    value * zoomLevel
+
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
 

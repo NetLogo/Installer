@@ -186,7 +186,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     val stroke = g2d.getStroke
 
     if (defaultLabel.isVisible) {
-      g2d.setStroke(new BasicStroke(2))
+      g2d.setStroke(new BasicStroke(Utils.zoomFloat(2), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND))
       g2d.setColor(borderHighlightColor)
     } else {
       g2d.setColor(borderColor)
