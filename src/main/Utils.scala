@@ -131,7 +131,7 @@ object Utils {
 
     root match {
       case zoomable: Zoomable =>
-        zoomable.setZoom(zoomLevel)
+        zoomable.zoom()
 
       case _ =>
     }

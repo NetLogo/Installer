@@ -5,7 +5,6 @@ package org.nlogo.installer
 import java.awt.{ Color, Graphics }
 import java.awt.event.ActionEvent
 import javax.swing.{ AbstractAction, Action, Icon, JButton }
-import javax.swing.border.EmptyBorder
 
 class Button(action: Action) extends JButton(action) with Transparent with ThemeSync with MouseActions {
   def this(text: String, function: () => Unit) = this(new AbstractAction(text) {
@@ -23,7 +22,7 @@ class Button(action: Action) extends JButton(action) with Transparent with Theme
   private var backgroundPressedColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
 
-  setBorder(new EmptyBorder(Utils.GapSize / 4, Utils.GapSize, Utils.GapSize / 4, Utils.GapSize))
+  setBorder(new ZoomableBorder(Utils.GapSize / 4, Utils.GapSize))
   setFocusable(false)
   setContentAreaFilled(false)
 

@@ -2,9 +2,8 @@
 
 package org.nlogo.installer
 
-import java.awt.{ BorderLayout, Color, Dimension, EventQueue, Frame, Graphics, LinearGradientPaint }
+import java.awt.{ Color, Dimension, EventQueue, Frame, Graphics, LinearGradientPaint }
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
-import javax.swing.border.EmptyBorder
 
 sealed abstract trait ProgressResult
 
@@ -26,18 +25,21 @@ class ProgressDialog(parent: Frame, title: String, message: String)
   private var progress = -1.0
   private var abort = false
 
-  add(new JPanel(new BorderLayout(Utils.GapSize, Utils.GapSize)) with Transparent {
-    setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
+  add(new JPanel with Transparent {
+    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
+    setBorder(new ZoomableBorder(Utils.GapSize))
 
-    add(label, BorderLayout.NORTH)
-    add(progressBar, BorderLayout.CENTER)
+    add(label)
+    add(new VerticalStrut(Utils.GapSize))
+    add(progressBar)
+    add(new VerticalStrut(Utils.GapSize))
     add(new JPanel with Transparent {
       setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
 
       add(Box.createHorizontalGlue)
       add(cancelButton)
       add(Box.createHorizontalGlue)
-    }, BorderLayout.SOUTH)
+    })
   })
 
   Utils.zoomComponents(this, Utils.getZoomLevel, 1)
@@ -110,7 +112,7 @@ class ProgressDialog(parent: Frame, title: String, message: String)
     }
 
     override def getPreferredSize: Dimension =
-      new Dimension(150, Utils.getCornerDiameter)
+      new Dimension((150 * Utils.getZoomLevel).toInt, Utils.getCornerDiameter)
 
     override def paintComponent(g: Graphics): Unit = {
       val g2d = Utils.initGraphics2D(g)

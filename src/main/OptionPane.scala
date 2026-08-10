@@ -2,9 +2,8 @@
 
 package org.nlogo.installer
 
-import java.awt.{ BorderLayout, Component, Dimension, Frame }
+import java.awt.{ Component, Dimension, Frame }
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
-import javax.swing.border.EmptyBorder
 
 class OptionPane(parent: Frame, title: String, message: String, options: Array[String])
   extends JDialog(parent, title, true) with ThemeSync {
@@ -27,10 +26,12 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
     }
   }
 
-  add(new JPanel(new BorderLayout(Utils.GapSize, Utils.GapSize)) with Transparent {
-    setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
+  add(new JPanel with Transparent {
+    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
+    setBorder(new ZoomableBorder(Utils.GapSize))
 
-    add(getContent(), BorderLayout.CENTER)
+    add(getContent())
+    add(new VerticalStrut(Utils.GapSize))
     add(new JPanel with Transparent {
       setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
 
@@ -38,12 +39,12 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
       add(buttons.head)
 
       buttons.drop(1).foreach { button =>
-        add(Box.createHorizontalStrut(Utils.GapSize))
+        add(new HorizontalStrut(Utils.GapSize))
         add(button)
       }
 
       add(Box.createHorizontalGlue)
-    }, BorderLayout.SOUTH)
+    })
   })
 
   Utils.zoomComponents(this, Utils.getZoomLevel, 1)
@@ -89,7 +90,7 @@ class ComboBoxOptionPane(parent: Frame, title: String, message: String, options:
       setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
 
       add(ComboBoxOptionPane.super.getContent())
-      add(Box.createVerticalStrut(Utils.GapSize))
+      add(new VerticalStrut(Utils.GapSize))
       add(new JPanel with Transparent {
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
 

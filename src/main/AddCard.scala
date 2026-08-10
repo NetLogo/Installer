@@ -48,7 +48,7 @@ class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with Theme
     new Dimension(super.getMinimumSize.width, getPreferredSize.height)
 
   override def getPreferredSize: Dimension =
-    new Dimension(super.getPreferredSize.width, Utils.IconSize + Utils.GapSize * 2)
+    new Dimension(super.getPreferredSize.width, ((Utils.IconSize + Utils.GapSize * 2) * Utils.getZoomLevel).toInt)
 
   override def getMaximumSize: Dimension =
     new Dimension(super.getMaximumSize.width, getPreferredSize.height)

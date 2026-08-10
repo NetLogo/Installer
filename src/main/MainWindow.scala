@@ -8,7 +8,6 @@ import java.nio.file.{ Files, Path, Paths }
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, ScrollPaneConstants,
                      WindowConstants }
-import javax.swing.border.EmptyBorder
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.matching.Regex
@@ -44,13 +43,13 @@ class MainWindow extends JFrame with ThemeSync {
   private val statusPanel = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
 
-    add(Box.createVerticalStrut(Utils.GapSize))
+    add(new VerticalStrut(Utils.GapSize))
     add(scanPanel)
   }
 
   private val contents = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
-    setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
+    setBorder(new ZoomableBorder(Utils.GapSize))
 
     add(new JPanel with Transparent {
       setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
@@ -195,12 +194,12 @@ class MainWindow extends JFrame with ThemeSync {
     cardPanel.removeAll()
 
     cards.foreach { card =>
-      cardPanel.add(Box.createVerticalStrut(Utils.GapSize))
+      cardPanel.add(new VerticalStrut(Utils.GapSize))
       cardPanel.add(card)
     }
 
     statusPanel.add(cardPanel)
-    statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
+    statusPanel.add(new VerticalStrut(Utils.GapSize))
     statusPanel.add(addCard)
 
     Utils.zoomComponents(statusPanel, Utils.getZoomLevel, 1)

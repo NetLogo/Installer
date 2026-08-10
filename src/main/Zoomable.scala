@@ -3,5 +3,5 @@
 package org.nlogo.installer
 
 trait Zoomable {
-  def setZoom(zoom: Float): Unit
+  def zoom(): Unit
 }

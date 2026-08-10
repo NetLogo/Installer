@@ -5,7 +5,6 @@ package org.nlogo.installer
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
 import java.io.File
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
-import javax.swing.border.EmptyBorder
 
 import scala.sys.process.Process
 
@@ -33,7 +32,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
     setVisible(false)
 
-    add(Box.createHorizontalStrut(Utils.GapSize))
+    add(new HorizontalStrut(Utils.GapSize))
     add(updateButton)
 
     override def getMaximumSize: Dimension =
@@ -60,10 +59,10 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   ))
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
-  setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
+  setBorder(new ZoomableBorder(Utils.GapSize))
 
   add(iconLabel)
-  add(Box.createHorizontalStrut(Utils.GapSize))
+  add(new HorizontalStrut(Utils.GapSize))
 
   add(new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
@@ -72,17 +71,17 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     add(defaultLabel)
   })
 
-  add(Box.createHorizontalStrut(Utils.GapSize))
+  add(new HorizontalStrut(Utils.GapSize))
   add(Box.createHorizontalGlue)
   add(launchButton)
   add(updatePanel)
 
   if (otherDropdown.count > 0) {
-    add(Box.createHorizontalStrut(Utils.GapSize))
+    add(new HorizontalStrut(Utils.GapSize))
     add(otherDropdown)
   }
 
-  add(Box.createHorizontalStrut(Utils.GapSize))
+  add(new HorizontalStrut(Utils.GapSize))
   add(manageDropdown)
 
   initTheme()
@@ -214,7 +213,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     otherDropdown.syncTheme(theme)
   }
 
-  override def setZoom(zoom: Float): Unit = {
-    iconLabel.setIcon(Utils.scaleIcon(config.icon, (Utils.IconSize * zoom).toInt))
+  override def zoom(): Unit = {
+    iconLabel.setIcon(Utils.scaleIcon(config.icon, (Utils.IconSize * Utils.getZoomLevel).toInt))
   }
 }
