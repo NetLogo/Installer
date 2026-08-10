@@ -49,10 +49,11 @@ class Button(action: Action) extends JButton(action) with Transparent with Theme
       g2d.setColor(backgroundColor)
     }
 
-    g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
+    g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.zoom(Utils.CornerDiameter), Utils.zoom(Utils.CornerDiameter))
 
     g2d.setColor(borderColor)
-    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.getCornerDiameter, Utils.getCornerDiameter)
+    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.zoom(Utils.CornerDiameter),
+                      Utils.zoom(Utils.CornerDiameter))
 
     super.paintComponent(g)
   }

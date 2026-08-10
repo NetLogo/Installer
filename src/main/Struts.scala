@@ -6,7 +6,7 @@ import java.awt.{ Component, Dimension }
 
 class HorizontalStrut(size: Int) extends Component {
   override def getPreferredSize: Dimension =
-    new Dimension((size * Utils.getZoomLevel).toInt, 0)
+    new Dimension(Utils.zoom(size), 0)
 
   override def getMinimumSize: Dimension =
     getPreferredSize
@@ -17,7 +17,7 @@ class HorizontalStrut(size: Int) extends Component {
 
 class VerticalStrut(size: Int) extends Component {
   override def getPreferredSize: Dimension =
-    new Dimension(0, (size * Utils.getZoomLevel).toInt)
+    new Dimension(0, Utils.zoom(size))
 
   override def getMinimumSize: Dimension =
     getPreferredSize

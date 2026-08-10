@@ -9,10 +9,8 @@ class ZoomableBorder(top: Int, left: Int, bottom: Int, right: Int) extends Borde
   def this(vertical: Int, horizontal: Int) = this(vertical, horizontal, vertical, horizontal)
   def this(size: Int) = this(size, size, size, size)
 
-  override def getBorderInsets(c: Component): Insets = {
-    new Insets((top * Utils.getZoomLevel).toInt, (left * Utils.getZoomLevel).toInt,
-               (bottom * Utils.getZoomLevel).toInt, (right * Utils.getZoomLevel).toInt)
-  }
+  override def getBorderInsets(c: Component): Insets =
+    new Insets(Utils.zoom(top), Utils.zoom(left), Utils.zoom(bottom), Utils.zoom(right))
 
   override def isBorderOpaque: Boolean =
     false

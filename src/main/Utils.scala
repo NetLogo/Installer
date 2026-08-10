@@ -11,9 +11,8 @@ import javax.swing.{ Icon, ImageIcon, JComponent }
 
 object Utils {
   val GapSize = 12
+  val CornerDiameter = 8
   val IconSize = 64
-
-  private val CornerDiameter = 8
 
   val os: OS = {
     val name = System.getProperty("os.name").toLowerCase
@@ -56,8 +55,8 @@ object Utils {
     Prefs.put("zoomLevel", zoomLevel)
   }
 
-  def getCornerDiameter: Int =
-    (CornerDiameter * zoomLevel).toInt
+  def zoom(value: Int): Int =
+    (value * zoomLevel).toInt
 
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]

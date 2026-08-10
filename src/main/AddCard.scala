@@ -27,7 +27,7 @@ class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with Theme
         g2d.setColor(backgroundHoverColor)
       }
 
-      g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
+      g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.zoom(Utils.CornerDiameter), Utils.zoom(Utils.CornerDiameter))
     }
 
     val stroke = g2d.getStroke
@@ -35,7 +35,8 @@ class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with Theme
     g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 0, Array(Utils.GapSize / 2f),
                                   Utils.GapSize / 2f))
     g2d.setColor(borderColor)
-    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.getCornerDiameter, Utils.getCornerDiameter)
+    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.zoom(Utils.CornerDiameter),
+                      Utils.zoom(Utils.CornerDiameter))
     g2d.setStroke(stroke)
 
     g2d.drawLine(getWidth / 2 - getHeight / 8, getHeight / 2, getWidth / 2 + getHeight / 8, getHeight / 2)
@@ -48,7 +49,7 @@ class AddCard(mainWindow: MainWindow) extends JPanel with Transparent with Theme
     new Dimension(super.getMinimumSize.width, getPreferredSize.height)
 
   override def getPreferredSize: Dimension =
-    new Dimension(super.getPreferredSize.width, ((Utils.IconSize + Utils.GapSize * 2) * Utils.getZoomLevel).toInt)
+    new Dimension(super.getPreferredSize.width, Utils.zoom(Utils.IconSize + Utils.GapSize * 2))
 
   override def getMaximumSize: Dimension =
     new Dimension(super.getMaximumSize.width, getPreferredSize.height)

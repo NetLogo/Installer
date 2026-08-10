@@ -2,7 +2,7 @@
 
 package org.nlogo.installer
 
-import java.awt.{ EventQueue, Image }
+import java.awt.{ Dimension, EventQueue, Image }
 import java.io.File
 import java.nio.file.{ Files, Path, Paths }
 import javax.imageio.ImageIO
@@ -337,8 +337,10 @@ class MainWindow extends JFrame with ThemeSync {
     Utils.setZoomLevel(newZoom)
     Utils.zoomComponents(scrollPane, newZoom, oldZoom)
 
-    setSize((700 * newZoom).toInt.min(getToolkit.getScreenSize.width),
-            ((Utils.IconSize * 4 + Utils.GapSize * 13) * newZoom).toInt.min(getToolkit.getScreenSize.height))
+    val screenSize: Dimension = getToolkit.getScreenSize
+
+    setSize(Utils.zoom(700).min(screenSize.width),
+            Utils.zoom(Utils.IconSize * 4 + Utils.GapSize * 13).min(screenSize.height))
   }
 
   override def syncTheme(theme: ColorTheme): Unit = {

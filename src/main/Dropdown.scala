@@ -15,7 +15,7 @@ class Dropdown(title: String, items: Array[MenuItem]) extends Button(title, new 
     items.size
 
   override def zoom(): Unit = {
-    setIconTextGap((Utils.GapSize * Utils.getZoomLevel).toInt)
+    setIconTextGap(Utils.zoom(Utils.GapSize))
   }
 }
 
@@ -41,8 +41,8 @@ class ComboBox(options: Array[String]) extends Button(options.head, new Dropdown
 class DropdownArrow extends Icon with ThemeSync {
   private var color: Color = Color.WHITE
 
-  override def getIconWidth: Int = (9 * Utils.getZoomLevel).toInt
-  override def getIconHeight: Int = (5 * Utils.getZoomLevel).toInt
+  override def getIconWidth: Int = Utils.zoom(9)
+  override def getIconHeight: Int = Utils.zoom(5)
 
   override def paintIcon(c: Component, g: Graphics, x: Int, y: Int): Unit = {
     val g2d = Utils.initGraphics2D(g)

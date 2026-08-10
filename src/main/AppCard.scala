@@ -181,7 +181,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     val g2d = Utils.initGraphics2D(g)
 
     g2d.setColor(backgroundColor)
-    g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
+    g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.zoom(Utils.CornerDiameter), Utils.zoom(Utils.CornerDiameter))
 
     val stroke = g2d.getStroke
 
@@ -192,7 +192,8 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
       g2d.setColor(borderColor)
     }
 
-    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.getCornerDiameter, Utils.getCornerDiameter)
+    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.zoom(Utils.CornerDiameter),
+                      Utils.zoom(Utils.CornerDiameter))
     g2d.setStroke(stroke)
 
     super.paintComponent(g)
@@ -214,6 +215,6 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   }
 
   override def zoom(): Unit = {
-    iconLabel.setIcon(Utils.scaleIcon(config.icon, (Utils.IconSize * Utils.getZoomLevel).toInt))
+    iconLabel.setIcon(Utils.scaleIcon(config.icon, Utils.zoom(Utils.IconSize)))
   }
 }

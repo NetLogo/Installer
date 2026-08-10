@@ -112,13 +112,13 @@ class ProgressDialog(parent: Frame, title: String, message: String)
     }
 
     override def getPreferredSize: Dimension =
-      new Dimension((150 * Utils.getZoomLevel).toInt, Utils.getCornerDiameter)
+      new Dimension(Utils.zoom(150), Utils.zoom(Utils.CornerDiameter))
 
     override def paintComponent(g: Graphics): Unit = {
       val g2d = Utils.initGraphics2D(g)
 
       g2d.setColor(backgroundColor)
-      g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
+      g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.zoom(Utils.CornerDiameter), Utils.zoom(Utils.CornerDiameter))
 
       if (progress == -1.0) {
         val offset = (((System.currentTimeMillis - start) % 2000) / 2000f) * getWidth * 2 - getWidth
@@ -126,10 +126,12 @@ class ProgressDialog(parent: Frame, title: String, message: String)
         g2d.setPaint(new LinearGradientPaint(offset, getHeight / 2f, getWidth + offset, getHeight / 2f,
                                              Array(0f, 0.5f, 1f),
                                              Array(backgroundColor, foregroundColor, backgroundColor)))
-        g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
+        g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.zoom(Utils.CornerDiameter),
+                          Utils.zoom(Utils.CornerDiameter))
       } else {
         g2d.setColor(foregroundColor)
-        g2d.fillRoundRect(0, 0, (getWidth * progress).toInt, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
+        g2d.fillRoundRect(0, 0, (getWidth * progress).toInt, getHeight, Utils.zoom(Utils.CornerDiameter),
+                          Utils.zoom(Utils.CornerDiameter))
       }
     }
 
