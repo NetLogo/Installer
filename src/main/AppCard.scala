@@ -9,10 +9,14 @@ import javax.swing.border.EmptyBorder
 
 import scala.sys.process.Process
 
-class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with Transparent with ThemeSync {
+class AppCard(val config: AppConfig, mainWindow: MainWindow)
+  extends JPanel with Transparent with ThemeSync with Zoomable {
+
   private var backgroundColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
   private var borderHighlightColor: Color = Color.WHITE
+
+  private val iconLabel = new JLabel(config.icon)
 
   private val nameLabel = new JLabel(s"<html><b>${config.name}</b></html>") {
     setFont(getFont.deriveFont(14f))
@@ -58,7 +62,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
   setBorder(new EmptyBorder(Utils.GapSize, Utils.GapSize, Utils.GapSize, Utils.GapSize))
 
-  add(new JLabel(config.icon))
+  add(iconLabel)
   add(Box.createHorizontalStrut(Utils.GapSize))
 
   add(new JPanel with Transparent {
@@ -178,7 +182,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
     val g2d = Utils.initGraphics2D(g)
 
     g2d.setColor(backgroundColor)
-    g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.CornerDiameter, Utils.CornerDiameter)
+    g2d.fillRoundRect(0, 0, getWidth, getHeight, Utils.getCornerDiameter, Utils.getCornerDiameter)
 
     val stroke = g2d.getStroke
 
@@ -189,7 +193,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
       g2d.setColor(borderColor)
     }
 
-    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.CornerDiameter, Utils.CornerDiameter)
+    g2d.drawRoundRect(0, 0, getWidth - 1, getHeight - 1, Utils.getCornerDiameter, Utils.getCornerDiameter)
     g2d.setStroke(stroke)
 
     super.paintComponent(g)
@@ -208,5 +212,9 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow) extends JPanel with
 
     manageDropdown.syncTheme(theme)
     otherDropdown.syncTheme(theme)
+  }
+
+  override def setZoom(zoom: Float): Unit = {
+    iconLabel.setIcon(Utils.scaleIcon(config.icon, (Utils.IconSize * zoom).toInt))
   }
 }

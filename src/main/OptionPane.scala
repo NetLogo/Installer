@@ -46,6 +46,8 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
     }, BorderLayout.SOUTH)
   })
 
+  Utils.zoomComponents(this, Utils.getZoomLevel, 1)
+
   initTheme()
   pack()
 

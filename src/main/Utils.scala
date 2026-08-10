@@ -2,16 +2,18 @@
 
 package org.nlogo.installer
 
-import java.awt.{ Color, Cursor, Graphics, Graphics2D, RenderingHints, Window }
+import java.awt.{ Color, Component, Container, Cursor, Graphics, Graphics2D, Image, RenderingHints, Window }
+import java.awt.image.BufferedImage
 import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
 import java.nio.file.{ Files, Path, StandardOpenOption }
-import javax.swing.JComponent
+import javax.swing.{ Icon, ImageIcon, JComponent }
 
 object Utils {
   val GapSize = 12
-  val CornerDiameter = 8
   val IconSize = 64
+
+  private val CornerDiameter = 8
 
   val os: OS = {
     val name = System.getProperty("os.name").toLowerCase
@@ -42,6 +44,20 @@ object Utils {
 
   private val versionRegex = """(?i)^(\d+).(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
   private val oldVersionRegex = """(?i)^(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
+
+  private var zoomLevel = 1f
+
+  def getZoomLevel: Float =
+    zoomLevel
+
+  def setZoomLevel(zoomLevel: Float): Unit = {
+    this.zoomLevel = zoomLevel
+
+    Prefs.put("zoomLevel", zoomLevel)
+  }
+
+  def getCornerDiameter: Int =
+    (CornerDiameter * zoomLevel).toInt
 
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
@@ -108,6 +124,32 @@ object Utils {
 
       dest
     }
+  }
+
+  def zoomComponents(root: Component, newZoom: Float, oldZoom: Float): Unit = {
+    root.setFont(root.getFont.deriveFont(root.getFont.getSize / oldZoom * zoomLevel))
+
+    root match {
+      case zoomable: Zoomable =>
+        zoomable.setZoom(zoomLevel)
+
+      case _ =>
+    }
+
+    root match {
+      case container: Container =>
+        container.getComponents.foreach(zoomComponents(_, newZoom, oldZoom))
+
+      case _ =>
+    }
+  }
+
+  def scaleIcon(icon: Icon, size: Int): Icon = {
+    val image = new BufferedImage(icon.getIconWidth, icon.getIconHeight, BufferedImage.TYPE_INT_ARGB)
+
+    icon.paintIcon(null, image.getGraphics, 0, 0)
+
+    new ImageIcon(image.getScaledInstance(size, size, Image.SCALE_SMOOTH))
   }
 }
 

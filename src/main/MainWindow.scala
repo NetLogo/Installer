@@ -3,7 +3,6 @@
 package org.nlogo.installer
 
 import java.awt.{ EventQueue, Image }
-import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.{ Files, Path, Paths }
 import javax.imageio.ImageIO
@@ -64,16 +63,19 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   private val scrollPane = new ScrollPane(contents, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-                                          ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
+                                          ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED)
+
+  private val menu = new MenuBar(this)
 
   locally {
     setTitle("NetLogo Installer")
     setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+    setJMenuBar(menu)
 
     add(scrollPane)
 
     setMinimumSize(scrollPane.getMinimumSize)
-    setSize(700, Utils.IconSize * 4 + Utils.GapSize * 13)
+    setZoom(Prefs.getFloat("zoomLevel", 1))
 
     val screenSize = getToolkit.getScreenSize
 
@@ -201,21 +203,10 @@ class MainWindow extends JFrame with ThemeSync {
     statusPanel.add(Box.createVerticalStrut(Utils.GapSize))
     statusPanel.add(addCard)
 
+    Utils.zoomComponents(statusPanel, Utils.getZoomLevel, 1)
+
     revalidate()
     repaint()
-  }
-
-  private def resizeImage(image: Image): ImageIcon = {
-    val size = Utils.IconSize
-
-    // getScaledInstance runs asynchronously, but wrapping it with ImageIcon ensures that the scaling
-    // operation fully completes before creating the BufferedImage (Isaac B 8/24/25)
-    val scaledImage = new ImageIcon(image.getScaledInstance(size, size, Image.SCALE_SMOOTH)).getImage
-    val bufferedImage = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
-
-    bufferedImage.createGraphics.drawImage(scaledImage, 0, 0, size, size, null)
-
-    new ImageIcon(bufferedImage)
   }
 
   // this method looks in the standard platform-specific locations to find NetLogo installations,
@@ -297,7 +288,7 @@ class MainWindow extends JFrame with ThemeSync {
           }
         }))
 
-        AppConfig(s"NetLogo $version", version, resizeImage(image), root, exec, findMatch(regexThreed),
+        AppConfig(s"NetLogo $version", version, new ImageIcon(image), root, exec, findMatch(regexThreed),
                   findMatch(regexBsearch), findMatch(regexHubNet))
       }
     } else {
@@ -337,6 +328,20 @@ class MainWindow extends JFrame with ThemeSync {
   private def centerText(text: String): String =
     s"<html><body style=\"text-align: center\">$text</body></html>"
 
+  def zoom(amount: Float): Unit = {
+    setZoom((Utils.getZoomLevel + amount).max(1))
+  }
+
+  def setZoom(newZoom: Float): Unit = {
+    val oldZoom: Float = Utils.getZoomLevel
+
+    Utils.setZoomLevel(newZoom)
+    Utils.zoomComponents(scrollPane, newZoom, oldZoom)
+
+    setSize((700 * newZoom).toInt.min(getToolkit.getScreenSize.width),
+            ((Utils.IconSize * 4 + Utils.GapSize * 13) * newZoom).toInt.min(getToolkit.getScreenSize.height))
+  }
+
   override def syncTheme(theme: ColorTheme): Unit = {
     scrollPane.syncTheme(theme)
 
@@ -346,5 +351,7 @@ class MainWindow extends JFrame with ThemeSync {
     cards.foreach(_.syncTheme(theme))
 
     addCard.syncTheme(theme)
+
+    menu.syncTheme(theme)
   }
 }

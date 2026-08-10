@@ -2,16 +2,11 @@
 
 package org.nlogo.installer
 
-import java.awt.{ Color, Component, Cursor, Graphics }
-import java.awt.event.ActionEvent
-import javax.swing.{ AbstractAction, Icon, JMenuItem, JPopupMenu, SwingConstants }
-import javax.swing.border.EmptyBorder
-import javax.swing.plaf.basic.BasicMenuItemUI
+import java.awt.{ Color, Component, Graphics }
+import javax.swing.{ Icon, JPopupMenu, SwingConstants }
 
 class Dropdown(title: String, items: Array[MenuItem]) extends Button(title, new DropdownArrow) {
-  private val menu = new PopupMenu {
-    items.foreach(add)
-  }
+  private val menu = new PopupMenu(items)
 
   setHorizontalTextPosition(SwingConstants.LEFT)
   setIconTextGap(Utils.GapSize)
@@ -24,9 +19,7 @@ class Dropdown(title: String, items: Array[MenuItem]) extends Button(title, new 
 class ComboBox(options: Array[String]) extends Button(options.head, new DropdownArrow) {
   private var selectedOption: String = options.head
 
-  private val menu = new PopupMenu {
-    options.foreach(option => add(new MenuItem(option, () => select(option))))
-  }
+  private val menu = new PopupMenu(options.map(option => new MenuItem(option, () => select(option))))
 
   setHorizontalTextPosition(SwingConstants.LEFT)
   setIconTextGap(Utils.GapSize)
@@ -45,8 +38,8 @@ class ComboBox(options: Array[String]) extends Button(options.head, new Dropdown
 class DropdownArrow extends Icon with ThemeSync {
   private var color: Color = Color.WHITE
 
-  override def getIconWidth: Int = 9
-  override def getIconHeight: Int = 5
+  override def getIconWidth: Int = (9 * Utils.getZoomLevel).toInt
+  override def getIconHeight: Int = (5 * Utils.getZoomLevel).toInt
 
   override def paintIcon(c: Component, g: Graphics, x: Int, y: Int): Unit = {
     val g2d = Utils.initGraphics2D(g)
@@ -61,40 +54,26 @@ class DropdownArrow extends Icon with ThemeSync {
   }
 }
 
-class PopupMenu extends JPopupMenu with ThemeSync {
-  initTheme()
+class PopupMenu(items: Array[MenuItem]) extends JPopupMenu with ThemeSync {
+  private var lastZoom: Float = Utils.getZoomLevel
 
-  override def syncTheme(theme: ColorTheme): Unit = {
-    setBackground(theme.menuBackground)
-  }
-}
+  items.foreach(add)
 
-class MenuItem(text: String, function: () => Unit) extends JMenuItem(new AbstractAction(text) {
-  override def actionPerformed(e: ActionEvent): Unit = {
-    function()
-  }
-}) with ThemeSync {
-
-  private val menuUI = new MenuItemUI
-
-  setUI(menuUI)
-  setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
-  setBorder(new EmptyBorder(Utils.GapSize / 2, 0, Utils.GapSize / 2, 0))
+  Utils.zoomComponents(this, Utils.getZoomLevel, 1)
 
   initTheme()
 
-  override def syncTheme(theme: ColorTheme): Unit = {
-    setBackground(theme.menuBackground)
-    setForeground(theme.menuText)
+  override def setVisible(visible: Boolean): Unit = {
+    if (visible) {
+      Utils.zoomComponents(this, Utils.getZoomLevel, lastZoom)
 
-    menuUI.syncTheme(theme)
-  }
-
-  private class MenuItemUI extends BasicMenuItemUI with ThemeSync {
-    initTheme()
-
-    override def syncTheme(theme: ColorTheme): Unit = {
-      selectionBackground = theme.menuBackgroundHover
+      lastZoom = Utils.getZoomLevel
     }
+
+    super.setVisible(visible)
+  }
+
+  override def syncTheme(theme: ColorTheme): Unit = {
+    setBackground(theme.menuBackground)
   }
 }

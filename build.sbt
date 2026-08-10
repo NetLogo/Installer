@@ -19,6 +19,7 @@ lazy val root = project.in(file(".")).settings(
 
   javaOptions ++= Seq(
     "-Dapple.awt.application.appearance=system",
+    "-Dapple.laf.useScreenMenuBar=true",
     s"-Dinstaller.version=${version.value}"
   ),
 
