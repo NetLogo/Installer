@@ -2,7 +2,7 @@
 
 package org.nlogo.installer
 
-import java.awt.Cursor
+import java.awt.{ Cursor, Font }
 import java.awt.event.ActionEvent
 import javax.swing.{ AbstractAction, JMenuItem, KeyStroke }
 import javax.swing.plaf.basic.BasicMenuItemUI
@@ -14,7 +14,7 @@ class MenuItem(text: String, function: () => Unit, accelerator: Option[KeyStroke
     }
   }) with ThemeSync {
 
-  private val menuUI = new MenuItemUI
+  private lazy val menuUI = new MenuItemUI
 
   setUI(menuUI)
   setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
@@ -23,6 +23,12 @@ class MenuItem(text: String, function: () => Unit, accelerator: Option[KeyStroke
   accelerator.foreach(setAccelerator)
 
   initTheme()
+
+  override def setFont(font: Font): Unit = {
+    super.setFont(font)
+
+    menuUI.setAcceleratorFont(font)
+  }
 
   override def syncTheme(theme: ColorTheme): Unit = {
     setBackground(theme.menuBackground)
@@ -33,6 +39,10 @@ class MenuItem(text: String, function: () => Unit, accelerator: Option[KeyStroke
 
   private class MenuItemUI extends BasicMenuItemUI with ThemeSync {
     initTheme()
+
+    def setAcceleratorFont(font: Font): Unit = {
+      acceleratorFont = font
+    }
 
     override def syncTheme(theme: ColorTheme): Unit = {
       setForeground(theme.menuText)

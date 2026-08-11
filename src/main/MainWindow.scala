@@ -336,6 +336,7 @@ class MainWindow extends JFrame with ThemeSync {
 
     Utils.setZoomLevel(newZoom)
     Utils.zoomComponents(scrollPane, newZoom, oldZoom)
+    Utils.zoomMenu(menu, newZoom, oldZoom)
 
     val screenSize: Dimension = getToolkit.getScreenSize
 

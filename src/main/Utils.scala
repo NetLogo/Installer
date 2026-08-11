@@ -154,6 +154,17 @@ object Utils {
     }
   }
 
+  def zoomMenu(menu: MenuBar, newZoom: Float, oldZoom: Float): Unit = {
+    menu.getComponents.foreach {
+      case menu: Menu =>
+        menu.setFont(menu.getFont.deriveFont(menu.getFont.getSize / oldZoom * zoomLevel))
+
+        menu.getMenuComponents.foreach(Utils.zoomComponents(_, newZoom, oldZoom))
+
+      case _ =>
+    }
+  }
+
   def scaleIcon(icon: Icon, size: Int): Icon = {
     val image = new BufferedImage(icon.getIconWidth, icon.getIconHeight, BufferedImage.TYPE_INT_ARGB)
 
