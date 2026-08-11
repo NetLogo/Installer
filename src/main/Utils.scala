@@ -3,8 +3,8 @@
 package org.nlogo.installer
 
 import java.awt.{ Color, Component, Container, Cursor, Graphics, Graphics2D, Image, RenderingHints, Window }
+import java.awt.event.{ InputEvent, MouseAdapter, MouseEvent }
 import java.awt.image.BufferedImage
-import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
 import java.nio.file.{ Files, Path, StandardOpenOption }
 import javax.swing.{ Icon, ImageIcon, JComponent }
@@ -38,6 +38,14 @@ object Utils {
 
       case OS.Linux =>
         System.getProperty("user.home")
+    }
+  }
+
+  val platformCtrl = {
+    if (os == OS.Mac) {
+      InputEvent.META_DOWN_MASK
+    } else {
+      InputEvent.CTRL_DOWN_MASK
     }
   }
 

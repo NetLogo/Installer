@@ -3,7 +3,7 @@
 package org.nlogo.installer
 
 import java.awt.{ Color, Graphics }
-import java.awt.event.{ InputEvent, KeyEvent }
+import java.awt.event.KeyEvent
 import javax.swing.{ JMenuBar, KeyStroke }
 
 class MenuBar(mainWindow: MainWindow) extends JMenuBar with ThemeSync {
@@ -12,11 +12,11 @@ class MenuBar(mainWindow: MainWindow) extends JMenuBar with ThemeSync {
 
   private val zoomMenu = new Menu("Zoom", Array(
     new MenuItem("Zoom In", () => mainWindow.zoom(0.5),
-                 Option(KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, InputEvent.META_DOWN_MASK))),
+                 Option(KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, Utils.platformCtrl))),
     new MenuItem("Zoom Out", () => mainWindow.zoom(-0.5),
-                 Option(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.META_DOWN_MASK))),
+                 Option(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, Utils.platformCtrl))),
     new MenuItem("Reset Zoom", () => mainWindow.setZoom(1),
-                 Option(KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.META_DOWN_MASK)))
+                 Option(KeyStroke.getKeyStroke(KeyEvent.VK_0, Utils.platformCtrl)))
   ))
 
   add(zoomMenu)
