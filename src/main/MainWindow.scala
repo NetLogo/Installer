@@ -342,6 +342,8 @@ class MainWindow extends JFrame with ThemeSync {
 
     setSize(Utils.zoom(700).min(screenSize.width),
             Utils.zoom(Utils.IconSize * 4 + Utils.GapSize * 13).min(screenSize.height))
+
+    setLocation(getX.max(0).min(screenSize.width - getWidth), getY.max(0).min(screenSize.height - getHeight))
   }
 
   override def syncTheme(theme: ColorTheme): Unit = {
