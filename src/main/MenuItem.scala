@@ -35,7 +35,13 @@ class MenuItem(text: String, function: () => Unit, accelerator: Option[KeyStroke
     initTheme()
 
     override def syncTheme(theme: ColorTheme): Unit = {
+      setForeground(theme.menuText)
+
       selectionBackground = theme.menuBackgroundHover
+      selectionForeground = theme.menuTextHover
+      acceleratorForeground = theme.menuText
+      acceleratorSelectionForeground = theme.menuTextHover
+      disabledForeground = theme.menuTextDisabled
     }
   }
 }

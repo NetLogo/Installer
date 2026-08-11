@@ -20,9 +20,14 @@ lazy val root = project.in(file(".")).settings(
   javaOptions ++= Seq(
     "-Dapple.awt.application.appearance=system",
     "-Dapple.laf.useScreenMenuBar=true",
-    "-Xdock:name=NetLogo Installer",
     s"-Dinstaller.version=${version.value}"
-  ),
+  ) ++ {
+    if (System.getProperty("os.name").toLowerCase.startsWith("mac")) {
+      Some("-Xdock:name=NetLogo Installer")
+    } else {
+      None
+    }
+  },
 
   resolvers += "jitpack" at "https://jitpack.io",
 
