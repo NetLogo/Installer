@@ -74,7 +74,7 @@ class MainWindow extends JFrame with ThemeSync {
     add(scrollPane)
 
     setMinimumSize(scrollPane.getMinimumSize)
-    setZoom(Prefs.getFloat("zoomLevel", 1))
+    setZoom(Prefs.getFloat("zoomLevel", 1), 1)
 
     val screenSize = getToolkit.getScreenSize
 
@@ -202,7 +202,7 @@ class MainWindow extends JFrame with ThemeSync {
     statusPanel.add(new VerticalStrut(Utils.GapSize))
     statusPanel.add(addCard)
 
-    Utils.zoomComponents(statusPanel, Utils.getZoomLevel, 1)
+    Utils.zoomComponents(statusPanel, 1)
 
     revalidate()
     repaint()
@@ -328,15 +328,13 @@ class MainWindow extends JFrame with ThemeSync {
     s"<html><body style=\"text-align: center\">$text</body></html>"
 
   def zoom(amount: Float): Unit = {
-    setZoom((Utils.getZoomLevel + amount).max(1))
+    setZoom((Utils.getZoomLevel + amount).max(1), Utils.getZoomLevel * Utils.getUIScale)
   }
 
-  def setZoom(newZoom: Float): Unit = {
-    val oldZoom: Float = Utils.getZoomLevel
-
+  def setZoom(newZoom: Float, oldZoom: Float): Unit = {
     Utils.setZoomLevel(newZoom)
-    Utils.zoomComponents(scrollPane, newZoom, oldZoom)
-    Utils.zoomMenu(menu, newZoom, oldZoom)
+    Utils.zoomComponents(scrollPane, oldZoom)
+    Utils.zoomMenu(menu, oldZoom)
 
     val screenSize: Dimension = getToolkit.getScreenSize
 

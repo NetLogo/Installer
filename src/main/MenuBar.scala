@@ -15,7 +15,7 @@ class MenuBar(mainWindow: MainWindow) extends JMenuBar with ThemeSync {
                  Option(KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, Utils.platformCtrl))),
     new MenuItem("Zoom Out", () => mainWindow.zoom(-0.5),
                  Option(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, Utils.platformCtrl))),
-    new MenuItem("Reset Zoom", () => mainWindow.setZoom(1),
+    new MenuItem("Reset Zoom", () => mainWindow.setZoom(1, Utils.getZoomLevel * Utils.getUIScale),
                  Option(KeyStroke.getKeyStroke(KeyEvent.VK_0, Utils.platformCtrl)))
   ))
 

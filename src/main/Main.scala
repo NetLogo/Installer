@@ -8,8 +8,28 @@ import java.awt.{ Font, GraphicsEnvironment, Window }
 import javax.swing.UIManager
 import javax.swing.border.LineBorder
 
+import scala.sys.process.Process
+
 object Main {
   def main(args: Array[String]): Unit = {
+    Option(System.getProperty("sun.java2d.uiScale")).flatMap(_.toFloatOption) match {
+      case Some(scale) =>
+        Utils.setUIScale(scale)
+
+      case _ if System.getProperty("os.name").toLowerCase.startsWith("linux") =>
+        try {
+          val query: String = Process(Seq("xrdb", "-query")).!!
+
+          """Xft\.dpi:\s*(\d+)""".r.findFirstMatchIn(query).flatMap(_.group(1).toIntOption).foreach { dpi =>
+            Utils.setUIScale(dpi / 96f)
+          }
+        } catch {
+          case _ =>
+        }
+
+      case _ =>
+    }
+
     val font = {
       if (Utils.os == OS.Windows) {
         new Font("Segoe UI", Font.PLAIN, 12)

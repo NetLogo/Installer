@@ -58,19 +58,19 @@ class DropdownArrow extends Icon with ThemeSync {
 }
 
 class PopupMenu(items: Array[MenuItem]) extends JPopupMenu with ThemeSync {
-  private var lastZoom: Float = Utils.getZoomLevel
+  private var lastZoom: Float = Utils.getZoomLevel * Utils.getUIScale
 
   items.foreach(add)
 
-  Utils.zoomComponents(this, Utils.getZoomLevel, 1)
+  Utils.zoomComponents(this, 1)
 
   initTheme()
 
   override def setVisible(visible: Boolean): Unit = {
     if (visible) {
-      Utils.zoomComponents(this, Utils.getZoomLevel, lastZoom)
+      Utils.zoomComponents(this, lastZoom)
 
-      lastZoom = Utils.getZoomLevel
+      lastZoom = Utils.getZoomLevel * Utils.getUIScale
     }
 
     super.setVisible(visible)

@@ -47,7 +47,7 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
     })
   })
 
-  Utils.zoomComponents(this, Utils.getZoomLevel, 1)
+  Utils.zoomComponents(this, 1)
 
   initTheme()
   pack()

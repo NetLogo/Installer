@@ -42,7 +42,7 @@ class ProgressDialog(parent: Frame, title: String, message: String)
     })
   })
 
-  Utils.zoomComponents(this, Utils.getZoomLevel, 1)
+  Utils.zoomComponents(this, 1)
 
   initTheme()
   pack()

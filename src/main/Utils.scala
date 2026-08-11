@@ -53,6 +53,7 @@ object Utils {
   private val oldVersionRegex = """(?i)^(\d+).(\d+)(?:-(?:beta|rc)(\d+))?$""".r
 
   private var zoomLevel = 1f
+  private var uiScale = 1f
 
   def getZoomLevel: Float =
     zoomLevel
@@ -64,10 +65,17 @@ object Utils {
   }
 
   def zoom(value: Int): Int =
-    (value * zoomLevel).toInt
+    (value * zoomLevel * uiScale).toInt
 
   def zoomFloat(value: Float): Float =
-    value * zoomLevel
+    value * zoomLevel * uiScale
+
+  def getUIScale: Float =
+    uiScale
+
+  def setUIScale(scale: Float): Unit = {
+    uiScale = scale
+  }
 
   def initGraphics2D(g: Graphics): Graphics2D = {
     val g2d = g.asInstanceOf[Graphics2D]
@@ -136,8 +144,8 @@ object Utils {
     }
   }
 
-  def zoomComponents(root: Component, newZoom: Float, oldZoom: Float): Unit = {
-    root.setFont(root.getFont.deriveFont(root.getFont.getSize / oldZoom * zoomLevel))
+  def zoomComponents(root: Component, oldZoom: Float): Unit = {
+    root.setFont(root.getFont.deriveFont(root.getFont.getSize / oldZoom * zoomLevel * uiScale))
 
     root match {
       case zoomable: Zoomable =>
@@ -148,18 +156,18 @@ object Utils {
 
     root match {
       case container: Container =>
-        container.getComponents.foreach(zoomComponents(_, newZoom, oldZoom))
+        container.getComponents.foreach(zoomComponents(_, oldZoom))
 
       case _ =>
     }
   }
 
-  def zoomMenu(menu: MenuBar, newZoom: Float, oldZoom: Float): Unit = {
+  def zoomMenu(menu: MenuBar, oldZoom: Float): Unit = {
     menu.getComponents.foreach {
       case menu: Menu =>
-        menu.setFont(menu.getFont.deriveFont(menu.getFont.getSize / oldZoom * zoomLevel))
+        menu.setFont(menu.getFont.deriveFont(menu.getFont.getSize / oldZoom * zoomLevel * uiScale))
 
-        menu.getMenuComponents.foreach(Utils.zoomComponents(_, newZoom, oldZoom))
+        menu.getMenuComponents.foreach(Utils.zoomComponents(_, oldZoom))
 
       case _ =>
     }
