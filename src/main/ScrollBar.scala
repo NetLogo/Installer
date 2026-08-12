@@ -6,12 +6,12 @@ import java.awt.{ Adjustable, Color, Dimension, Graphics, Rectangle }
 import javax.swing.{ JComponent, JButton, JScrollBar }
 import javax.swing.plaf.basic.BasicScrollBarUI
 
-class ScrollBar(orientation: Int) extends JScrollBar(orientation) with MouseActions with ThemeSync {
+class ScrollBar(orientation: Int) extends JScrollBar(orientation) with MouseActions with ThemeSync with Zoomable {
   private var backgroundColor: Color = Color.WHITE
   private var foregroundColor: Color = Color.WHITE
   private var foregroundHoverColor: Color = Color.WHITE
 
-  setUnitIncrement(5)
+  setUnitIncrement(Utils.zoom(5))
   setUI(new ScrollBarUI)
 
   override def getPreferredSize: Dimension = {
@@ -28,6 +28,10 @@ class ScrollBar(orientation: Int) extends JScrollBar(orientation) with MouseActi
     backgroundColor = theme.scrollBarBackground
     foregroundColor = theme.scrollBarForeground
     foregroundHoverColor = theme.scrollBarForegroundHover
+  }
+
+  override def zoom(): Unit = {
+    setUnitIncrement(Utils.zoom(5))
   }
 
   private class ScrollBarUI extends BasicScrollBarUI {
