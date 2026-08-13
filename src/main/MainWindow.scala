@@ -2,7 +2,7 @@
 
 package org.nlogo.installer
 
-import java.awt.{ Dimension, EventQueue, Image }
+import java.awt.{ BorderLayout, Dimension, EventQueue, Image }
 import java.io.File
 import java.nio.file.{ Files, Path, Paths }
 import javax.imageio.ImageIO
@@ -123,11 +123,26 @@ class MainWindow extends JFrame with ThemeSync {
       cards.exists(_.config.version == version)
     }.sortBy(Utils.numericVersion).reverse
 
-    val optionPane = new ComboBoxOptionPane(this, "Select Version", "Select the version you would like to download.",
-                                            versions, Array("Download", "Cancel"))
+    if (versions.isEmpty) {
+      new OptionPane(this, "Error", "There are no more available versions.", Array("OK"))
+
+      return
+    }
+
+    val versionList = new List(versions) {
+      setSelectedIndex(0)
+    }
+
+    val versionPanel = new JPanel(new BorderLayout) with Transparent {
+      add(new ScrollPane(versionList, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED), BorderLayout.CENTER)
+    }
+
+    val optionPane = new CustomOptionPane(this, "Select Version", "Select the version you would like to download.",
+                                          versionPanel, Array("Download", "Cancel"))
 
     if (optionPane.getSelectedIndex == 0)
-      install(optionPane.getSelectedOption)
+      install(versionList.getSelectedValue)
   }
 
   private def addExisting(): Unit = {

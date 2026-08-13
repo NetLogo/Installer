@@ -81,33 +81,16 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
   }
 }
 
-class ComboBoxOptionPane(parent: Frame, title: String, message: String, options: Array[String], buttons: Array[String])
-  extends OptionPane(parent, title, message, buttons) {
-
-  private lazy val dropdown = new ComboBox(options)
+class CustomOptionPane(parent: Frame, title: String, message: String, content: Component, options: Array[String])
+  extends OptionPane(parent, title, message, options) {
 
   override def getContent(): Component = {
     new JPanel with Transparent {
       setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
 
-      add(ComboBoxOptionPane.super.getContent())
+      add(CustomOptionPane.super.getContent())
       add(new VerticalStrut(Utils.GapSize))
-      add(new JPanel with Transparent {
-        setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
-
-        add(Box.createHorizontalGlue)
-        add(dropdown)
-        add(Box.createHorizontalGlue)
-      })
+      add(content)
     }
-  }
-
-  def getSelectedOption: String =
-    dropdown.getSelectedOption
-
-  override def syncTheme(theme: ColorTheme): Unit = {
-    super.syncTheme(theme)
-
-    dropdown.syncTheme(theme)
   }
 }

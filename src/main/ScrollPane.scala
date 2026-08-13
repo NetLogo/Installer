@@ -17,6 +17,8 @@ class ScrollPane(contents: JComponent, verticalPolicy: Int, horizontalPolicy: In
   setVerticalScrollBar(verticalScrollBar)
   setBorder(null)
 
+  initTheme()
+
   override def getMinimumSize: Dimension =
     new Dimension(contents.getMinimumSize.width, contents.getMinimumSize.height)
 
