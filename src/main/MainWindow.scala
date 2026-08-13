@@ -23,9 +23,10 @@ class MainWindow extends JFrame with ThemeSync {
     setFont(getFont.deriveFont(24f))
   }
 
-  private var cards = Seq[AppCard]()
+  private val downloadButton = new Button("Download Version", () => downloadVersion())
+  private val addButton = new Button("Add Existing Version", () => addExisting())
 
-  private val addCard = new AddCard(this)
+  private var cards = Seq[AppCard]()
 
   private val cardPanel = new JPanel with Transparent {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
@@ -56,6 +57,9 @@ class MainWindow extends JFrame with ThemeSync {
 
       add(titleLabel)
       add(Box.createHorizontalGlue)
+      add(downloadButton)
+      add(new HorizontalStrut(Utils.GapSize))
+      add(addButton)
     })
 
     add(statusPanel)
@@ -108,53 +112,45 @@ class MainWindow extends JFrame with ThemeSync {
     refreshCardPanel()
   }
 
-  def addInstallation(): Unit = {
-    new OptionPane(this, "Add Installation", "Add an existing installation or download a new version?",
-                   Array("Download new", "Add existing")).getSelectedIndex match {
-      case 0 =>
-        if (availableVersions.isEmpty) {
-          new OptionPane(this, "Error", "Error retrieving available versions from server.", Array("OK"))
+  private def downloadVersion(): Unit = {
+    if (availableVersions.isEmpty) {
+      new OptionPane(this, "Error", "Error retrieving available versions from server.", Array("OK"))
 
-          return
-        }
+      return
+    }
 
-        val versions: Array[String] = availableVersions.keys.toArray.filterNot { version =>
-          cards.exists(_.config.version == version)
-        }.sortBy(Utils.numericVersion).reverse
+    val versions: Array[String] = availableVersions.keys.toArray.filterNot { version =>
+      cards.exists(_.config.version == version)
+    }.sortBy(Utils.numericVersion).reverse
 
-        val optionPane = new ComboBoxOptionPane(
-          this, "Select Version", "Select the version you would like to download.", versions,
-          Array("Download", "Cancel")
-        )
+    val optionPane = new ComboBoxOptionPane(this, "Select Version", "Select the version you would like to download.",
+                                            versions, Array("Download", "Cancel"))
 
-        if (optionPane.getSelectedIndex == 0)
-          install(optionPane.getSelectedOption)
+    if (optionPane.getSelectedIndex == 0)
+      install(optionPane.getSelectedOption)
+  }
 
-      case 1 =>
-        val dialog = new JFileChooser
+  private def addExisting(): Unit = {
+    val dialog = new JFileChooser
 
-        dialog.setDialogTitle("Select Root Directory")
-        dialog.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
+    dialog.setDialogTitle("Select Root Directory")
+    dialog.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
 
-        if (dialog.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-          verifyRoot(dialog.getSelectedFile) match {
-            case Some(config) if cards.exists(_.config.version == config.version) =>
-              new OptionPane(this, "Already Exists", s"${config.name} is already installed.", Array("OK"))
+    if (dialog.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+      verifyRoot(dialog.getSelectedFile) match {
+        case Some(config) if cards.exists(_.config.version == config.version) =>
+          new OptionPane(this, "Already Exists", s"${config.name} is already installed.", Array("OK"))
 
-            case Some(config) =>
-              putExtraPaths(getExtraPaths :+ config.root)
+        case Some(config) =>
+          putExtraPaths(getExtraPaths :+ config.root)
 
-              setCards(cards.map(_.config) :+ config)
+          setCards(cards.map(_.config) :+ config)
 
-              refreshCardPanel()
+          refreshCardPanel()
 
-            case _ =>
-              new OptionPane(this, "Invalid", "The selected directory is not a valid NetLogo installation.",
-                             Array("OK"))
-          }
-        }
-
-      case _ =>
+        case _ =>
+          new OptionPane(this, "Invalid", "The selected directory is not a valid NetLogo installation.", Array("OK"))
+      }
     }
   }
 
@@ -199,8 +195,6 @@ class MainWindow extends JFrame with ThemeSync {
     }
 
     statusPanel.add(cardPanel)
-    statusPanel.add(new VerticalStrut(Utils.GapSize))
-    statusPanel.add(addCard)
 
     Utils.zoomComponents(statusPanel, 1)
 
@@ -350,9 +344,10 @@ class MainWindow extends JFrame with ThemeSync {
     titleLabel.setForeground(theme.windowText)
     scanLabel.setForeground(theme.windowText)
 
-    cards.foreach(_.syncTheme(theme))
+    downloadButton.syncTheme(theme)
+    addButton.syncTheme(theme)
 
-    addCard.syncTheme(theme)
+    cards.foreach(_.syncTheme(theme))
 
     menu.syncTheme(theme)
   }
