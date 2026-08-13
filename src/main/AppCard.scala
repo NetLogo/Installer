@@ -11,6 +11,12 @@ import scala.sys.process.Process
 class AppCard(val config: AppConfig, mainWindow: MainWindow)
   extends JPanel with Transparent with ThemeSync with Zoomable {
 
+  private val platformFiles: String = Utils.os match {
+    case OS.Windows => "File Explorer"
+    case OS.Mac => "Finder"
+    case OS.Linux => "Files"
+  }
+
   private var backgroundColor: Color = Color.WHITE
   private var borderColor: Color = Color.WHITE
   private var borderHighlightColor: Color = Color.WHITE
@@ -55,7 +61,8 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   private val manageDropdown = new Dropdown("Manage", Array(
     new MenuItem("Set as Default", () => mainWindow.setDefault(this)),
     repairItem,
-    new MenuItem("Uninstall", () => uninstall())
+    new MenuItem("Uninstall", () => uninstall()),
+    new MenuItem(s"View in $platformFiles", () => viewFiles())
   ))
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
@@ -150,6 +157,18 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
         new OptionPane(mainWindow, "Repair", "Repair complete.", Array("OK"))
       }
     }
+  }
+
+  private def viewFiles(): Unit = {
+    val open: String = {
+      if (Utils.os == OS.Windows) {
+        "explorer"
+      } else {
+        "open"
+      }
+    }
+
+    Process(Seq(open, config.root.getAbsolutePath)).!
   }
 
   private def uninstall(): Unit = {
