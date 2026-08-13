@@ -3,11 +3,11 @@
 package org.nlogo.installer
 
 import java.awt.{ Color, Component, Container, Cursor, Graphics, Graphics2D, Image, RenderingHints, Window }
-import java.awt.event.{ InputEvent, MouseAdapter, MouseEvent }
+import java.awt.event.{ ActionEvent, InputEvent, KeyEvent, MouseAdapter, MouseEvent }
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.{ Files, Path, StandardOpenOption }
-import javax.swing.{ Icon, ImageIcon, JComponent }
+import javax.swing.{ AbstractAction, Icon, ImageIcon, JComponent, KeyStroke }
 
 object Utils {
   val GapSize = 12
@@ -179,6 +179,15 @@ object Utils {
     icon.paintIcon(null, image.getGraphics, 0, 0)
 
     new ImageIcon(image.getScaledInstance(size, size, Image.SCALE_SMOOTH))
+  }
+
+  def addEscAction(component: JComponent, action: () => Unit): Unit = {
+    component.getInputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "close")
+    component.getActionMap.put("close", new AbstractAction {
+      override def actionPerformed(e: ActionEvent): Unit = {
+        action()
+      }
+    })
   }
 }
 

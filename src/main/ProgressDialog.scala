@@ -48,6 +48,7 @@ class ProgressDialog(parent: Frame, title: String, message: String)
   pack()
 
   Utils.center(this, parent)
+  Utils.addEscAction(getRootPane, () => setVisible(false))
 
   setResizable(false)
   setAlwaysOnTop(true)

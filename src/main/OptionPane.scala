@@ -53,6 +53,7 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
   pack()
 
   Utils.center(this, parent)
+  Utils.addEscAction(getRootPane, () => setVisible(false))
 
   setResizable(false)
   setAlwaysOnTop(true)
