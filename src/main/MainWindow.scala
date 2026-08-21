@@ -3,6 +3,7 @@
 package org.nlogo.installer
 
 import java.awt.{ BorderLayout, Dimension, EventQueue, Image }
+import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
 import java.nio.file.{ Files, Path, Paths }
 import javax.imageio.ImageIO
@@ -139,7 +140,19 @@ class MainWindow extends JFrame with ThemeSync {
     }
 
     val optionPane = new CustomOptionPane(this, "Select Version", "Select the version you would like to download.",
-                                          versionPanel, Array("Download", "Cancel"))
+                                          versionPanel, Array("Download", "Cancel"), false) {
+      versionList.addMouseListener(new MouseAdapter {
+        override def mouseClicked(e: MouseEvent): Unit = {
+          if (e.getClickCount == 2) {
+            selectedIndex = 0
+
+            setVisible(false)
+          }
+        }
+      })
+    }
+
+    optionPane.setVisible(true)
 
     if (optionPane.getSelectedIndex == 0)
       install(versionList.getSelectedValue)

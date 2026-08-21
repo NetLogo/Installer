@@ -5,10 +5,10 @@ package org.nlogo.installer
 import java.awt.{ Component, Dimension, Frame }
 import javax.swing.{ Box, BoxLayout, JDialog, JLabel, JPanel }
 
-class OptionPane(parent: Frame, title: String, message: String, options: Array[String])
+class OptionPane(parent: Frame, title: String, message: String, options: Array[String], open: Boolean = true)
   extends JDialog(parent, title, true) with ThemeSync {
 
-  private var selectedIndex = -1
+  protected var selectedIndex = -1
 
   protected val label = new JLabel(message)
 
@@ -57,7 +57,9 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
 
   setResizable(false)
   setAlwaysOnTop(true)
-  setVisible(true)
+
+  if (open)
+    setVisible(true)
 
   def getSelectedIndex: Int =
     selectedIndex
@@ -81,8 +83,8 @@ class OptionPane(parent: Frame, title: String, message: String, options: Array[S
   }
 }
 
-class CustomOptionPane(parent: Frame, title: String, message: String, content: Component, options: Array[String])
-  extends OptionPane(parent, title, message, options) {
+class CustomOptionPane(parent: Frame, title: String, message: String, content: Component, options: Array[String],
+                       open: Boolean = true) extends OptionPane(parent, title, message, options, open) {
 
   override def getContent(): Component = {
     new JPanel with Transparent {
