@@ -5,6 +5,7 @@ package org.nlogo.installer
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
 import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
+import java.nio.file.{ Path, Paths }
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 
 import scala.sys.process.Process
@@ -147,13 +148,29 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   }
 
   private def update(): Unit = {
-    Install.verifyFiles(mainWindow, "Update", config.root).flatMap {
-      Install.getUpdates(mainWindow, "Update", config.version, _)
-    }.foreach { updates =>
-      if (Install.updateFromFiles(mainWindow, "Update", "Downloading updated files...", updates, config.root.toPath)) {
-        setUpdatable(false)
+    val version: String = mainWindow.latestVersion
 
-        mainWindow.refreshInstallation(config.root)
+    Install.verifyFiles(mainWindow, "Update", config.root).flatMap {
+      Install.getUpdates(mainWindow, "Update", version, _)
+    }.foreach { updates =>
+      val newRoot: Path = {
+        if (Utils.os == OS.Linux) {
+          Paths.get(Utils.appRoot, s"NetLogo-$version")
+        } else {
+          Paths.get(Utils.appRoot, s"NetLogo $version")
+        }
+      }
+
+      if (Install.updateFromFiles(mainWindow, "Update", "Downloading updated files...", updates, newRoot)) {
+        Utils.deleteRecursive(config.root)
+
+        val default: Boolean = isDefault
+
+        mainWindow.removeCard(this)
+        mainWindow.refreshInstallation(newRoot.toFile)
+
+        if (default)
+          mainWindow.setDefault(version)
 
         new OptionPane(mainWindow, "Update", "Update complete.", Array("OK"))
       } else {

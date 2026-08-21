@@ -6,4 +6,6 @@ import java.io.File
 import javax.swing.ImageIcon
 
 case class AppConfig(name: String, version: String, icon: ImageIcon, root: File, exec: File, threed: Option[File],
-                     bsearch: Option[File], hubNet: Option[File])
+                     bsearch: Option[File], hubNet: Option[File]) {
+  val numericVersion: Int = Utils.numericVersion(version)
+}

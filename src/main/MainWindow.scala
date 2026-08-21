@@ -5,7 +5,7 @@ package org.nlogo.installer
 import java.awt.{ BorderLayout, Dimension, EventQueue, Image }
 import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{ Path, Paths }
 import javax.imageio.ImageIO
 import javax.swing.{ Box, BoxLayout, ImageIcon, JFileChooser, JFrame, JLabel, JPanel, ScrollPaneConstants,
                      WindowConstants }
@@ -94,6 +94,9 @@ class MainWindow extends JFrame with ThemeSync {
     initTheme()
   }
 
+  def latestVersion: String =
+    availableVersions.keys.maxBy(Utils.numericVersion)
+
   def setDefault(default: AppCard): Unit = {
     if (Prefs.get("defaultVersion").contains(default.config.version) || Defaults.setDefault(default.config)) {
       Prefs.put("defaultVersion", default.config.version)
@@ -104,8 +107,12 @@ class MainWindow extends JFrame with ThemeSync {
     }
   }
 
+  def setDefault(version: String): Unit = {
+    cards.find(_.config.version == version).foreach(setDefault)
+  }
+
   def removeCard(card: AppCard): Unit = {
-    cards = cards.filter(_ != card)
+    setCards(cards.filter(_ != card).map(_.config))
 
     if (card.isDefault)
       cards.headOption.foreach(setDefault)
@@ -257,18 +264,17 @@ class MainWindow extends JFrame with ThemeSync {
   }
 
   private def setCards(configs: Seq[AppConfig]): Unit = {
-    cards = configs.sortBy(config => Integer.MAX_VALUE - Utils.numericVersion(config.version)).map {
+    val sortedConfigs: Seq[AppConfig] = configs.sortBy(config => Integer.MAX_VALUE - config.numericVersion)
+
+    cards = sortedConfigs.map {
       new AppCard(_, this) {
         availableVersions.get(config.version) match {
           case Some(expected) =>
-            val checksumPath = config.root.toPath.resolve(".checksum")
-
-            if (Files.exists(checksumPath))
-              setUpdatable(expected != Files.readString(checksumPath).trim)
-
+            setUpdatable(config == sortedConfigs(0) && config.numericVersion < Utils.numericVersion(latestVersion))
             setReparable(true)
 
           case _ =>
+            setUpdatable(false)
             setReparable(false)
         }
       }
