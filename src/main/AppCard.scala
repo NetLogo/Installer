@@ -3,6 +3,7 @@
 package org.nlogo.installer
 
 import java.awt.{ BasicStroke, Color, Dimension, Graphics }
+import java.awt.event.{ MouseAdapter, MouseEvent }
 import java.io.File
 import javax.swing.{ Box, BoxLayout, JLabel, JPanel }
 
@@ -58,12 +59,14 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     setEnabled(false)
   }
 
-  private val manageDropdown = new Dropdown("Manage", Array(
+  private val managePopup = new PopupMenu(Array(
     new MenuItem("Set as Default", () => mainWindow.setDefault(this)),
     repairItem,
     new MenuItem("Uninstall", () => uninstall()),
     new MenuItem(s"View in $platformFiles", () => viewFiles())
   ))
+
+  private val manageDropdown = new Dropdown("Manage", managePopup)
 
   setLayout(new BoxLayout(this, BoxLayout.X_AXIS))
   setBorder(new ZoomableBorder(Utils.GapSize))
@@ -90,6 +93,18 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
 
   add(new HorizontalStrut(Utils.GapSize))
   add(manageDropdown)
+
+  addMouseListener(new MouseAdapter {
+    override def mousePressed(e: MouseEvent): Unit = {
+      if (e.isPopupTrigger)
+        managePopup.show(AppCard.this, e.getX, e.getY)
+    }
+
+    override def mouseReleased(e: MouseEvent): Unit = {
+      if (e.isPopupTrigger)
+        managePopup.show(AppCard.this, e.getX, e.getY)
+    }
+  })
 
   initTheme()
 

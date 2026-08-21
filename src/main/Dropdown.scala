@@ -5,14 +5,14 @@ package org.nlogo.installer
 import java.awt.{ Color, Component, Graphics }
 import javax.swing.{ Icon, JPopupMenu, SwingConstants }
 
-class Dropdown(title: String, items: Array[MenuItem]) extends Button(title, new DropdownArrow) with Zoomable {
-  private val menu = new PopupMenu(items)
+class Dropdown(title: String, menu: PopupMenu) extends Button(title, new DropdownArrow) with Zoomable {
+  def this(title: String, items: Array[MenuItem]) = this(title, new PopupMenu(items))
 
   setHorizontalTextPosition(SwingConstants.LEFT)
   setAction(() => menu.show(this, 0, getHeight))
 
   def count: Int =
-    items.size
+    menu.count
 
   override def zoom(): Unit = {
     setIconTextGap(Utils.zoom(Utils.GapSize))
@@ -65,6 +65,9 @@ class PopupMenu(items: Array[MenuItem]) extends JPopupMenu with ThemeSync {
   Utils.zoomComponents(this, 1)
 
   initTheme()
+
+  def count: Int =
+    items.size
 
   override def setVisible(visible: Boolean): Unit = {
     if (visible) {
