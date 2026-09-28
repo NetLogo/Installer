@@ -17,7 +17,6 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 import scala.concurrent.{ Await, ExecutionContext, Future, Promise }
 import scala.concurrent.duration.Duration
 import scala.sys.process.Process
-import scala.util.Try
 
 import ujson.{ Obj, Value }
 
@@ -271,17 +270,15 @@ object Install {
     progress.setProgress(1.0)
   }
 
-  def verifyFiles(frame: Frame, title: String, root: File): Option[Map[String, String]] = {
-    val files: Array[File] = Utils.listFilesRecursive(root).filterNot { file =>
+  def verifyFiles(frame: Frame, title: String, config: AppConfig): Option[Map[String, String]] = {
+    val files: Array[File] = Utils.listFilesRecursive(config.root).filterNot { file =>
       file.isDirectory || file.getName == ".checksum"
     }
 
     val total = files.foldLeft(0L)(_ + _.length)
     var processed = 0
 
-    var checksums = Try(Map(
-      ".checksum" -> Files.readString(root.toPath.resolve(".checksum")).trim
-    )).getOrElse(Map())
+    var checksums = config.checksum.fold(Map())(checksum => Map(".checksum" -> checksum))
 
     val progress = new ProgressDialog(frame, title, "Verifying files...")
 
@@ -291,7 +288,7 @@ object Install {
           throw new InterruptedException
 
         val path = file.toPath
-        val relativePath = root.toPath.relativize(path).toString.replace("\\", "/")
+        val relativePath = config.root.toPath.relativize(path).toString.replace("\\", "/")
 
         val bytes = Files.readAllBytes(path)
 

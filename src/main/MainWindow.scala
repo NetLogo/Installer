@@ -97,8 +97,13 @@ class MainWindow extends JFrame with ThemeSync {
   def latestVersion: String =
     availableVersions.keys.maxBy(Utils.numericVersion)
 
+  def getChecksum(version: String): Option[String] =
+    availableVersions.get(version)
+
   def setDefault(default: AppCard): Unit = {
     if (Prefs.get("defaultVersion").contains(default.config.version) || Defaults.setDefault(default.config)) {
+      Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.SetDefault, default.config.version, default.config.checksum)
+
       Prefs.put("defaultVersion", default.config.version)
 
       cards.foreach(card => card.setDefault(card == default))
@@ -177,6 +182,8 @@ class MainWindow extends JFrame with ThemeSync {
           new OptionPane(this, "Already Exists", s"${config.name} is already installed.", Array("OK"))
 
         case Some(config) =>
+          Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.AddExisting, config.version, config.checksum)
+
           putExtraPaths(getExtraPaths :+ config.root)
 
           setCards(cards.map(_.config) :+ config)
@@ -206,6 +213,8 @@ class MainWindow extends JFrame with ThemeSync {
     if (cards.exists(_.config.version == version)) {
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
+      Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.DownloadNew, version, getChecksum(version))
+
       val root: Path = {
         if (Utils.os == OS.Linux) {
           Paths.get(Utils.appRoot, s"NetLogo-$version")
@@ -345,8 +354,11 @@ class MainWindow extends JFrame with ThemeSync {
           val message: String = centerText("""|An update is available for the installer application.<br>
                                               |Would you like to update now?""".stripMargin)
 
-          if (new OptionPane(this, "Update Available", message, Array("Update", "Later")).getSelectedIndex == 0)
+          if (new OptionPane(this, "Update Available", message, Array("Update", "Later")).getSelectedIndex == 0) {
+            Analytics.sendInstallerEvent(AnalyticsInstallerEvent.Update, version)
+
             Install.updateInstaller(this, url)
+          }
         })
       }
     }

@@ -150,7 +150,9 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   private def update(): Unit = {
     val version: String = mainWindow.latestVersion
 
-    Install.verifyFiles(mainWindow, "Update", config.root).flatMap {
+    Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.Update, version, mainWindow.getChecksum(version))
+
+    Install.verifyFiles(mainWindow, "Update", config).flatMap {
       Install.getUpdates(mainWindow, "Update", version, _)
     }.foreach { updates =>
       val newRoot: Path = {
@@ -180,7 +182,9 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   }
 
   private def repair(): Unit = {
-    Install.verifyFiles(mainWindow, "Repair", config.root).flatMap {
+    Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.Update, config.version, config.checksum)
+
+    Install.verifyFiles(mainWindow, "Repair", config).flatMap {
       Install.getUpdates(mainWindow, "Repair", config.version, _)
     }.foreach { updates =>
       if (Install.updateFromFiles(mainWindow, "Repair", "Downloading repaired files...", updates, config.root.toPath)) {
@@ -206,6 +210,9 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   private def uninstall(): Unit = {
     if (new OptionPane(mainWindow, "Uninstall", s"Are you sure you want to uninstall ${config.name}?",
                        Array("Uninstall", "Cancel")).getSelectedIndex == 0) {
+
+      Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.Update, config.version, config.checksum)
+
       val success = {
         try {
           Utils.deleteRecursive(config.root)

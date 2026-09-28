@@ -1,5 +1,7 @@
 // (C) Uri Wilensky. https://github.com/NetLogo/NetLogo
 
+import java.nio.file.Paths
+
 import org.nlogo.installer.Dist
 
 lazy val root = project.in(file(".")).settings(
@@ -17,6 +19,15 @@ lazy val root = project.in(file(".")).settings(
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "us-ascii", "-release", "21",
                         "-Xfatal-warnings", "-Wunused:linted"),
 
+  // silence warnings from auto-generated ScalaPB code (Isaac B 9/28/26)
+  scalacOptions += {
+    val current = Paths.get(".").toAbsolutePath
+    val managed = (Compile / sourceManaged).value.toPath
+    val relative = current.relativize(managed).toString.replace("\\", "/")
+
+    s"-Wconf:src=$relative/.*:silent"
+  },
+
   javaOptions ++= Seq(
     "-Dapple.awt.application.appearance=system",
     "-Dapple.laf.useScreenMenuBar=true",
@@ -29,6 +40,9 @@ lazy val root = project.in(file(".")).settings(
     }
   },
 
+  Compile / PB.protoSources := Seq((Compile / resourceDirectory).value / "protobuf"),
+  Compile / PB.targets := Seq(scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"),
+
   resolvers += "jitpack" at "https://jitpack.io",
 
   libraryDependencies ++= Seq(
@@ -37,6 +51,7 @@ lazy val root = project.in(file(".")).settings(
     "com.softwaremill.sttp.client4" %% "core" % "4.0.9",
     "com.softwaremill.sttp.client4" %% "upickle" % "4.0.9",
     "org.apache.commons" % "commons-compress" % "1.28.0",
-    "com.dynatrace.hash4j" % "hash4j" % "0.28.0"
+    "com.dynatrace.hash4j" % "hash4j" % "0.28.0",
+    "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
   )
 ).settings(Dist.settings: _*)

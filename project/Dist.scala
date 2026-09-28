@@ -52,7 +52,8 @@ object Dist {
 
       run(Seq("jpackage", "--type", "app-image", "--app-version", appVersion, "--name", name,
               "--dest", output.toString, "--vendor", "CCL", "--input", input.toString, "--main-jar", jar.toString,
-              "--main-class", main) ++ javaOptions.value.flatMap(Seq("--java-options", _)))
+              "--main-class", main, "--java-options", "-Dinstaller.release=true") ++
+            javaOptions.value.flatMap(Seq("--java-options", _)))
 
       platform match {
         case Platform("windows", arch) =>
