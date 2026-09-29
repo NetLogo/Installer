@@ -5,7 +5,7 @@ package org.nlogo.installer
 import java.awt.{ Color, Component, Container, Cursor, Graphics, Graphics2D, Image, RenderingHints, Window }
 import java.awt.event.{ ActionEvent, InputEvent, KeyEvent, MouseAdapter, MouseEvent }
 import java.awt.image.BufferedImage
-import java.io.File
+import java.io.{ File, InputStream }
 import java.nio.file.{ Files, Path, StandardOpenOption }
 import javax.swing.{ AbstractAction, Icon, ImageIcon, JComponent, KeyStroke }
 
@@ -129,18 +129,22 @@ object Utils {
     }
   }
 
-  def loadExecutable(path: String, ext: String): Option[Path] = {
-    Option(getClass.getResourceAsStream(path)).map { stream =>
-      val dest: Path = Files.createTempFile(null, ext)
+  def loadExecutable(path: String, ext: String): Either[Result, Path] = {
+    Option(getClass.getResourceAsStream(path)) match {
+      case Some(stream: InputStream) =>
+        val dest: Path = Files.createTempFile(null, ext)
 
-      dest.toFile.setExecutable(true)
-      dest.toFile.deleteOnExit()
+        dest.toFile.setExecutable(true)
+        dest.toFile.deleteOnExit()
 
-      Files.write(dest, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+        Files.write(dest, stream.readAllBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
-      stream.close()
+        stream.close()
 
-      dest
+        Right(dest)
+
+      case _ =>
+        Left(Result.Failed("Failed to locate required file."))
     }
   }
 

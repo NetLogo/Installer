@@ -150,20 +150,19 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   private def update(): Unit = {
     val version: String = mainWindow.latestVersion
 
-    Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.Update, version, mainWindow.getChecksum(version))
-
-    Install.verifyFiles(mainWindow, "Update", config).flatMap {
-      Install.getUpdates(mainWindow, "Update", version, _)
-    }.foreach { updates =>
-      val newRoot: Path = {
-        if (Utils.os == OS.Linux) {
-          Paths.get(Utils.appRoot, s"NetLogo-$version")
-        } else {
-          Paths.get(Utils.appRoot, s"NetLogo $version")
-        }
+    val newRoot: Path = {
+      if (Utils.os == OS.Linux) {
+        Paths.get(Utils.appRoot, s"NetLogo-$version")
+      } else {
+        Paths.get(Utils.appRoot, s"NetLogo $version")
       }
+    }
 
-      if (Install.updateFromFiles(mainWindow, "Update", "Downloading updated files...", updates, newRoot)) {
+    Install.verifyFiles(mainWindow, "Update", config)
+      .flatMap(Install.getUpdates(mainWindow, "Update", version, _))
+      .flatMap(Install.updateFromFiles(mainWindow, "Update", "Downloading updated files...", _, newRoot)) match {
+
+      case result @ Right(_) =>
         Utils.deleteRecursive(config.root)
 
         val default: Boolean = isDefault
@@ -174,24 +173,46 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
         if (default)
           mainWindow.setDefault(version)
 
+        Analytics.sendNetLogoEvent(NetLogoEvent.Update, version, mainWindow.getChecksum(version), result)
+
         new OptionPane(mainWindow, "Update", "Update complete.", Array("OK"))
-      } else {
-        setUpdatable(true)
-      }
+
+      case result @ Left(kind) =>
+        setUpdatable(kind != Result.Noop)
+
+        Analytics.sendNetLogoEvent(NetLogoEvent.Update, version, mainWindow.getChecksum(version), result)
+
+        kind match {
+          case Result.Failed(message) =>
+            new OptionPane(mainWindow, "Error", message, Array("OK"))
+
+          case _ =>
+        }
     }
   }
 
   private def repair(): Unit = {
-    Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.Update, config.version, config.checksum)
+    Install.verifyFiles(mainWindow, "Repair", config)
+      .flatMap(Install.getUpdates(mainWindow, "Repair", config.version, _))
+      .flatMap(Install.updateFromFiles(mainWindow, "Repair", "Downloading repaired files...", _,
+                                       config.root.toPath)) match {
 
-    Install.verifyFiles(mainWindow, "Repair", config).flatMap {
-      Install.getUpdates(mainWindow, "Repair", config.version, _)
-    }.foreach { updates =>
-      if (Install.updateFromFiles(mainWindow, "Repair", "Downloading repaired files...", updates, config.root.toPath)) {
+      case result @ Right(_) =>
         mainWindow.refreshInstallation(config.root)
 
+        Analytics.sendNetLogoEvent(NetLogoEvent.Repair, config.version, config.checksum, result)
+
         new OptionPane(mainWindow, "Repair", "Repair complete.", Array("OK"))
-      }
+
+      case result @ Left(kind) =>
+        Analytics.sendNetLogoEvent(NetLogoEvent.Repair, config.version, config.checksum, result)
+
+        kind match {
+          case Result.Failed(message) =>
+            new OptionPane(mainWindow, "Error", message, Array("OK"))
+
+          case _ =>
+        }
     }
   }
 
@@ -210,9 +231,6 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   private def uninstall(): Unit = {
     if (new OptionPane(mainWindow, "Uninstall", s"Are you sure you want to uninstall ${config.name}?",
                        Array("Uninstall", "Cancel")).getSelectedIndex == 0) {
-
-      Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.Update, config.version, config.checksum)
-
       val success = {
         try {
           Utils.deleteRecursive(config.root)
@@ -223,8 +241,12 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
 
       if (success) {
         mainWindow.removeCard(this)
+
+        Analytics.sendNetLogoEvent(NetLogoEvent.Uninstall, config.version, config.checksum, Right({}))
       } else {
-        new OptionPane(mainWindow, "Error", s"Unable to delete ${config.name}.", Array("OK"))
+        Analytics.sendNetLogoEvent(NetLogoEvent.Uninstall, config.version, config.checksum, Left(Result.Failed("")))
+
+        new OptionPane(mainWindow, "Error", s"Failed to delete ${config.name}.", Array("OK"))
       }
     }
   }

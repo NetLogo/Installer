@@ -14,4 +14,4 @@ rm -rf $2
 
 cd ~/NetLogo-Installer/bin
 
-./NetLogo\ Installer
+./NetLogo\ Installer --updated

@@ -8,10 +8,10 @@ import java.nio.file.{ Files, Path, StandardOpenOption }
 import scala.sys.process.Process
 
 object Defaults {
-  def setDefault(config: AppConfig): Boolean = {
+  def setDefault(config: AppConfig): Either[Result, Unit] = {
     val platformPath: String = s"/defaults/${Utils.os.name}/${Utils.arch}/defaults${Utils.os.bin}"
 
-    Utils.loadExecutable(platformPath, Utils.os.bin).fold(false) { path =>
+    Utils.loadExecutable(platformPath, Utils.os.bin).filterOrElse(path => {
       Utils.os match {
         case OS.Windows =>
           Process(Seq(path.toString, config.root.getAbsolutePath, config.version)).! == 0
@@ -32,6 +32,6 @@ object Defaults {
 
           Process(Seq(path.toString, config.version, mime.toString)).! == 0
       }
-    }
+    }, Result.Failed("Failed to set default version.")).map(_ => {})
   }
 }

@@ -12,4 +12,4 @@ rm -rf "/Applications/NetLogo Installer.app"
 cp -r $2 "/Applications/NetLogo Installer.app"
 rm -rf $2
 
-open "/Applications/NetLogo Installer.app"
+open "/Applications/NetLogo Installer.app" --args --updated

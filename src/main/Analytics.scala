@@ -13,7 +13,7 @@ import telemetry.TelemetryEventV1
 
 import ujson.{ Obj, Str, write }
 
-enum AnalyticsNetLogoEvent { case
+enum NetLogoEvent { case
   DownloadNew,
   AddExisting,
   Update,
@@ -22,8 +22,16 @@ enum AnalyticsNetLogoEvent { case
   SetDefault
 }
 
-enum AnalyticsInstallerEvent { case
+enum InstallerEvent { case
   Update
+}
+
+sealed abstract trait Result
+
+object Result {
+  case object Canceled extends Result
+  case object Noop extends Result
+  case class Failed(message: String) extends Result
 }
 
 object Analytics {
@@ -37,12 +45,13 @@ object Analytics {
 
   private val developer: Boolean = System.getProperty("installer.release") != "true"
 
-  def sendNetLogoEvent(event: AnalyticsNetLogoEvent, version: String, checksum: Option[String]): Unit = {
-    sendEvent(event.ordinal, "netlogo", Obj("version" -> version, checksum.map("checksum" -> Str(_)).toSeq*))
+  def sendNetLogoEvent[T](event: NetLogoEvent, version: String, checksum: Option[String], result: Either[Result, T]): Unit = {
+    sendEvent(event.ordinal, "netlogo", Obj("version" -> version, ("result" -> resultString(result)) +:
+                                            checksum.map("checksum" -> Str(_)).toSeq*))
   }
 
-  def sendInstallerEvent(event: AnalyticsInstallerEvent, version: String): Unit = {
-    sendEvent(event.ordinal, "installer", Obj("version" -> version))
+  def sendInstallerEvent[T](event: InstallerEvent, version: String, result: Either[Result, T]): Unit = {
+    sendEvent(event.ordinal, "installer", Obj("version" -> version, "result" -> resultString(result)))
   }
 
   def sendEvent(event: Int, endpoint: String, payload: Obj): Unit = {
@@ -60,5 +69,13 @@ object Analytics {
                 .contentType("application/x-protobuf")
                 .readTimeout(15.seconds)
                 .send(DefaultFutureBackend())
+  }
+
+  private def resultString[T](result: Either[Result, T]): String = {
+    result.fold(_ match {
+      case Result.Canceled => "canceled"
+      case Result.Noop => "noop"
+      case Result.Failed(_) => "failed"
+    }, _ => "succeeded")
   }
 }

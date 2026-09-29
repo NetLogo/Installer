@@ -23,22 +23,19 @@ import ujson.{ Obj, Value }
 object Install {
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
-  def installVersion(frame: Frame, version: String, root: Path): Unit = {
+  def installVersion(frame: Frame, version: String, root: Path): Either[Result, Unit] = {
     Request.json("version", Obj(
       "os" -> Utils.os.name,
       "arch" -> Utils.arch,
       "version" -> version
-    )).map(_.str).toOption.orElse {
-      new OptionPane(frame, "Error", "Error downloading files from server.", Array("OK"))
-
-      None
-    }.flatMap(downloadVersion(frame, _, "Install", s"Downloading NetLogo $version...")).foreach { data =>
-      if (installFull(frame, "Install", s"Installing NetLogo $version...", data, root, version))
-        new OptionPane(frame, "Install", "Installation complete.", Array("OK"))
-    }
+    )).map(_.str).orElse(Left(Result.Failed("Failed to download files from server.")))
+      .flatMap(downloadVersion(frame, _, "Install", s"Downloading NetLogo $version..."))
+      .flatMap(installFull(frame, "Install", s"Installing NetLogo $version...", _, root, version))
+      .map(_ => {})
   }
 
-  private def downloadVersion(frame: Frame, url: String, title: String, message: String): Option[Array[Byte]] = {
+  private def downloadVersion(frame: Frame, url: String, title: String,
+                              message: String): Either[Result, Array[Byte]] = {
     val progress = new ProgressDialog(frame, title, message)
 
     val output = new ByteArrayOutputStream
@@ -68,21 +65,20 @@ object Install {
 
     progress.trackProgress() match {
       case ProgressResult.Completed =>
-        Option(output.toByteArray)
+        Right(output.toByteArray)
 
       case ProgressResult.Canceled =>
         progress.requestAbort()
 
-        None
+        Left(Result.Canceled)
 
       case _ =>
-        new OptionPane(frame, "Error", "Error downloading files from server.", Array("OK"))
-
-        None
+        Left(Result.Failed("Failed to download files from server."))
     }
   }
 
-  def getUpdates(frame: Frame, title: String, version: String, checksums: Map[String, String]): Option[Seq[Update]] = {
+  def getUpdates(frame: Frame, title: String, version: String,
+                 checksums: Map[String, String]): Either[Result, Seq[Update]] = {
     val progress = new ProgressDialog(frame, title, "Requesting update from server...")
 
     val updates = Promise[Seq[Update]]()
@@ -100,15 +96,13 @@ object Install {
 
     progress.trackProgress() match {
       case ProgressResult.Completed if updates.isCompleted =>
-        Option(Await.result(updates.future, Duration.Inf))
+        Right(Await.result(updates.future, Duration.Inf))
 
       case ProgressResult.Canceled =>
-        None
+        Left(Result.Canceled)
 
       case _ =>
-        new OptionPane(frame, "Error", "Error requesting update from server.", Array("OK"))
-
-        None
+        Left(Result.Failed("Failed to request update from server."))
     }
   }
 
@@ -118,8 +112,8 @@ object Install {
     Update(obj("path").str, obj("url").str, obj("length").num.toLong, obj("exec").bool)
   }
 
-  def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path,
-                  version: String): Boolean = {
+  private def installFull(frame: Frame, title: String, message: String, data: Array[Byte], dest: Path,
+                  version: String): Either[Result, Unit] = {
 
     val progress = new ProgressDialog(frame, title, message)
 
@@ -132,30 +126,29 @@ object Install {
     progress.trackProgress() match {
       case ProgressResult.Completed =>
         if (Utils.os == OS.Linux) {
-          Utils.loadExecutable("/install/linux/install.sh", ".sh").fold(false) { helper =>
+          Utils.loadExecutable("/install/linux/install.sh", ".sh").filterOrElse(helper => {
             Process(Seq("pkexec", "sh", helper.toString, dest.toString, version)).! == 0
-          }
+          }, Result.Failed("Failed to execute update.")).map(_ => {})
         } else {
-          true
+          Right({})
         }
 
       case ProgressResult.Canceled =>
         progress.requestAbort()
 
-        false
+        Left(Result.Canceled)
 
       case _ =>
-        new OptionPane(frame, "Error", "Error installing files.", Array("OK"))
-
-        false
+        Left(Result.Failed("Failed to install files."))
     }
   }
 
-  def updateFromFiles(frame: Frame, title: String, message: String, updates: Seq[Update], dest: Path): Boolean = {
+  def updateFromFiles(frame: Frame, title: String, message: String, updates: Seq[Update],
+                      dest: Path): Either[Result, Unit] = {
     if (updates.isEmpty) {
       new OptionPane(frame, title, "Installation is already up to date.", Array("OK"))
 
-      return false
+      return Left(Result.Noop)
     }
 
     val progress = new ProgressDialog(frame, title, message)
@@ -199,17 +192,15 @@ object Install {
 
     progress.trackProgress() match {
       case ProgressResult.Completed =>
-        true
+        Right({})
 
       case ProgressResult.Canceled =>
         progress.requestAbort()
 
-        false
+        Left(Result.Canceled)
 
       case _ =>
-        new OptionPane(frame, "Error", "Error downloading files from server.", Array("OK"))
-
-        false
+        Left(Result.Failed("Failed to download files from server."))
     }
   }
 
@@ -270,7 +261,7 @@ object Install {
     progress.setProgress(1.0)
   }
 
-  def verifyFiles(frame: Frame, title: String, config: AppConfig): Option[Map[String, String]] = {
+  def verifyFiles(frame: Frame, title: String, config: AppConfig): Either[Result, Map[String, String]] = {
     val files: Array[File] = Utils.listFilesRecursive(config.root).filterNot { file =>
       file.isDirectory || file.getName == ".checksum"
     }
@@ -304,23 +295,21 @@ object Install {
 
     progress.trackProgress() match {
       case ProgressResult.Completed =>
-        Some(checksums)
+        Right(checksums)
 
       case ProgressResult.Canceled =>
         progress.requestAbort()
 
-        None
+        Left(Result.Canceled)
 
       case _ =>
-        new OptionPane(frame, "Error", "Error verifying installation.", Array("OK"))
-
-        None
+        Left(Result.Failed("Failed to verify installed files."))
     }
   }
 
-  def updateInstaller(frame: Frame, url: String): Unit = {
+  def updateInstaller(frame: Frame, url: String, version: String): Either[Result, Unit] = {
     downloadVersion(frame, url, "Update", "Downloading latest version...").flatMap(unzipInstaller(frame, _))
-      .foreach { path =>
+      .flatMap { path =>
 
       val ext: String = {
         if (Utils.os == OS.Windows) {
@@ -330,18 +319,13 @@ object Install {
         }
       }
 
-      Utils.loadExecutable(s"/update/${Utils.os.name}/update$ext", ext) match {
-        case Some(exec) =>
-          if (Process(Seq(exec.toString, ProcessHandle.current.pid.toString, path.toString)).! != 0)
-            new OptionPane(frame, "Error", "Update failed. Please try again later.", Array("OK"))
-
-        case _ =>
-          new OptionPane(frame, "Error", "Update failed. Please try again later.", Array("OK"))
-      }
+      Utils.loadExecutable(s"/update/${Utils.os.name}/update$ext", ext).filterOrElse(exec => {
+        Process(Seq(exec.toString, ProcessHandle.current.pid.toString, path.toString)).! == 0
+      }, Result.Failed("Failed to execute update.")).map(_ => {})
     }
   }
 
-  def unzipInstaller(frame: Frame, data: Array[Byte]): Option[Path] = {
+  def unzipInstaller(frame: Frame, data: Array[Byte]): Either[Result, Path] = {
     val path: Path = Files.createTempDirectory(null)
 
     val progress = new ProgressDialog(frame, "Update", "Installing latest version...")
@@ -354,17 +338,15 @@ object Install {
 
     progress.trackProgress() match {
       case ProgressResult.Completed =>
-        Option(path)
+        Right(path)
 
       case ProgressResult.Canceled =>
         progress.requestAbort()
 
-        None
+        Left(Result.Canceled)
 
       case _ =>
-        new OptionPane(frame, "Error", "Error installing latest version.", Array("OK"))
-
-        None
+        Left(Result.Failed("Failed to install latest version."))
     }
   }
 }

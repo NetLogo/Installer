@@ -101,13 +101,16 @@ class MainWindow extends JFrame with ThemeSync {
     availableVersions.get(version)
 
   def setDefault(default: AppCard): Unit = {
-    if (Prefs.get("defaultVersion").contains(default.config.version) || Defaults.setDefault(default.config)) {
-      Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.SetDefault, default.config.version, default.config.checksum)
-
+    if (Prefs.get("defaultVersion").contains(default.config.version) || Defaults.setDefault(default.config).isRight) {
       Prefs.put("defaultVersion", default.config.version)
 
       cards.foreach(card => card.setDefault(card == default))
+
+      Analytics.sendNetLogoEvent(NetLogoEvent.SetDefault, default.config.version, default.config.checksum, Right({}))
     } else {
+      Analytics.sendNetLogoEvent(NetLogoEvent.SetDefault, default.config.version, default.config.checksum,
+                                 Left(Result.Failed("")))
+
       new OptionPane(this, "Error", "Failed to set default NetLogo version.", Array("OK"))
     }
   }
@@ -179,16 +182,18 @@ class MainWindow extends JFrame with ThemeSync {
     if (dialog.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
       verifyRoot(dialog.getSelectedFile) match {
         case Some(config) if cards.exists(_.config.version == config.version) =>
+          Analytics.sendNetLogoEvent(NetLogoEvent.AddExisting, config.version, config.checksum, Left(Result.Noop))
+
           new OptionPane(this, "Already Exists", s"${config.name} is already installed.", Array("OK"))
 
         case Some(config) =>
-          Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.AddExisting, config.version, config.checksum)
-
           putExtraPaths(getExtraPaths :+ config.root)
 
           setCards(cards.map(_.config) :+ config)
 
           refreshCardPanel()
+
+          Analytics.sendNetLogoEvent(NetLogoEvent.AddExisting, config.version, config.checksum, Right({}))
 
         case _ =>
           new OptionPane(this, "Invalid", "The selected directory is not a valid NetLogo installation.", Array("OK"))
@@ -211,10 +216,10 @@ class MainWindow extends JFrame with ThemeSync {
 
   private def install(version: String): Unit = {
     if (cards.exists(_.config.version == version)) {
+      Analytics.sendNetLogoEvent(NetLogoEvent.DownloadNew, version, getChecksum(version), Left(Result.Noop))
+
       new OptionPane(this, "Error", s"NetLogo $version is already installed.", Array("OK"))
     } else {
-      Analytics.sendNetLogoEvent(AnalyticsNetLogoEvent.DownloadNew, version, getChecksum(version))
-
       val root: Path = {
         if (Utils.os == OS.Linux) {
           Paths.get(Utils.appRoot, s"NetLogo-$version")
@@ -223,9 +228,11 @@ class MainWindow extends JFrame with ThemeSync {
         }
       }
 
-      Install.installVersion(this, version, root)
+      val result: Either[Result, Unit] = Install.installVersion(this, version, root)
 
       refreshInstallation(root.toFile)
+
+      Analytics.sendNetLogoEvent(NetLogoEvent.DownloadNew, version, getChecksum(version), result)
     }
   }
 
@@ -354,11 +361,8 @@ class MainWindow extends JFrame with ThemeSync {
           val message: String = centerText("""|An update is available for the installer application.<br>
                                               |Would you like to update now?""".stripMargin)
 
-          if (new OptionPane(this, "Update Available", message, Array("Update", "Later")).getSelectedIndex == 0) {
-            Analytics.sendInstallerEvent(AnalyticsInstallerEvent.Update, version)
-
-            Install.updateInstaller(this, url)
-          }
+          if (new OptionPane(this, "Update Available", message, Array("Update", "Later")).getSelectedIndex == 0)
+            Install.updateInstaller(this, url, version)
         })
       }
     }

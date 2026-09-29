@@ -12,6 +12,9 @@ import scala.sys.process.Process
 
 object Main {
   def main(args: Array[String]): Unit = {
+    if (args.headOption.contains("--updated"))
+      Analytics.sendInstallerEvent(InstallerEvent.Update, System.getProperty("installer.version"), Right({}))
+
     Option(System.getProperty("sun.java2d.uiScale")).flatMap(_.toFloatOption) match {
       case Some(scale) =>
         Utils.setUIScale(scale)
