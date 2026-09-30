@@ -56,12 +56,14 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     config.hubNet.map(app => new MenuItem("HubNet Client", () => launchApp(app))),
   ).flatten)
 
+  private val defaultItem = new MenuItem("Set as Default", () => mainWindow.setDefault(this))
+
   private val repairItem = new MenuItem("Repair", () => repair()) {
     setEnabled(false)
   }
 
   private val managePopup = new PopupMenu(Array(
-    new MenuItem("Set as Default", () => mainWindow.setDefault(this)),
+    defaultItem,
     repairItem,
     new MenuItem("Uninstall", () => uninstall()),
     new MenuItem(s"View in $platformFiles", () => viewFiles())
@@ -111,6 +113,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
 
   def setDefault(default: Boolean): Unit = {
     defaultLabel.setVisible(default)
+    defaultItem.setEnabled(!default)
 
     repaint()
   }
