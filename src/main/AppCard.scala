@@ -144,8 +144,12 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
           // Linux behaves similarly to Windows, so we do the same thing here. (Isaac B 7/14/26)
           Process(Seq(app.getAbsolutePath)).run()
       }
+
+      Analytics.sendNetLogoEvent(NetLogoEvent.Launch, config.version, config.checksum, Right({}))
     } catch {
       case _ =>
+        Analytics.sendNetLogoEvent(NetLogoEvent.Launch, config.version, config.checksum, Left(Result.Failed("")))
+
         new OptionPane(mainWindow, "Error", s"Unable to launch ${app.getName}.", Array("OK"))
     }
   }

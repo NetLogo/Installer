@@ -19,7 +19,8 @@ enum NetLogoEvent { case
   Update,
   Repair,
   Uninstall,
-  SetDefault
+  SetDefault,
+  Launch
 }
 
 enum InstallerEvent { case
