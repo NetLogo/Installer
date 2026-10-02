@@ -103,9 +103,6 @@ class MainWindow extends JFrame with ThemeSync {
   def setDefault(default: AppCard): Unit = {
     if (Prefs.get("defaultVersion").contains(default.config.version)) {
       cards.foreach(card => card.setDefault(card == default))
-
-      Analytics.sendNetLogoEvent(NetLogoEvent.SetDefault, default.config.version, default.config.checksum,
-                                 Left(Result.Noop))
     } else if (Defaults.setDefault(default.config).isRight) {
       Prefs.put("defaultVersion", default.config.version)
 
