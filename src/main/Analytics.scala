@@ -46,9 +46,10 @@ object Analytics {
 
   private val developer: Boolean = System.getProperty("installer.release") != "true"
 
-  def sendNetLogoEvent[T](event: NetLogoEvent, version: String, checksum: Option[String], result: Either[Result, T]): Unit = {
+  def sendNetLogoEvent[T](event: NetLogoEvent, version: String, checksum: Option[String], result: Either[Result, T],
+                          extras: Seq[(String, String)] = Seq()): Unit = {
     sendEvent(event.ordinal, "netlogo", Obj("version" -> version, ("result" -> resultString(result)) +:
-                                            checksum.map("checksum" -> Str(_)).toSeq*))
+                                            (checksum.map("checksum" -> Str(_)) ++ extras.map(_ -> Str(_))).toSeq*))
   }
 
   def sendInstallerEvent[T](event: InstallerEvent, version: String, result: Either[Result, T]): Unit = {

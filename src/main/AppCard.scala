@@ -33,7 +33,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     setVisible(false)
   }
 
-  private val launchButton = new Button("Launch", () => launchApp(config.exec))
+  private val launchButton = new Button("Launch", () => launchApp("NetLogo", config.exec))
   private val updateButton = new Button("Update", () => update())
 
   private val updatePanel = new JPanel with Transparent {
@@ -51,9 +51,9 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
   }
 
   private val otherDropdown = new Dropdown("Other Apps", Array(
-    config.threed.map(app => new MenuItem("NetLogo 3D", () => launchApp(app))),
-    config.bsearch.map(app => new MenuItem("BehaviorSearch", () => launchApp(app))),
-    config.hubNet.map(app => new MenuItem("HubNet Client", () => launchApp(app))),
+    config.threed.map(app => new MenuItem("NetLogo 3D", () => launchApp("NetLogo 3D", app))),
+    config.bsearch.map(app => new MenuItem("BehaviorSearch", () => launchApp("BehaviorSearch", app))),
+    config.hubNet.map(app => new MenuItem("HubNet Client", () => launchApp("HubNet Client", app))),
   ).flatten)
 
   private val defaultItem = new MenuItem("Set as Default", () => mainWindow.setDefault(this))
@@ -129,7 +129,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
     repairItem.setEnabled(reparable)
   }
 
-  private def launchApp(app: File): Unit = {
+  private def launchApp(name: String, app: File): Unit = {
     try {
       Utils.os match {
         case OS.Windows =>
@@ -145,7 +145,7 @@ class AppCard(val config: AppConfig, mainWindow: MainWindow)
           Process(Seq(app.getAbsolutePath)).run()
       }
 
-      Analytics.sendNetLogoEvent(NetLogoEvent.Launch, config.version, config.checksum, Right({}))
+      Analytics.sendNetLogoEvent(NetLogoEvent.Launch, config.version, config.checksum, Right({}), Seq("name" -> name))
     } catch {
       case _ =>
         Analytics.sendNetLogoEvent(NetLogoEvent.Launch, config.version, config.checksum, Left(Result.Failed("")))
